@@ -1,0 +1,7 @@
+[package]
+name = "astigeom"
+version = "0.1.0"
+authors = [" <arun.sivaramakrishnan@gmail.com>"]
+
+[dependencies]
+simd = { git = "https://github.com/huonw/simd" }
