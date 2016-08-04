@@ -1,9 +1,9 @@
 #![feature(cfg_target_feature)]
 extern crate simd;
 
-mod point;
-mod tol;
-mod bspline;
+pub mod point;
+pub mod tol;
+pub mod bspline;
 #[test]
 fn it_works() {
 

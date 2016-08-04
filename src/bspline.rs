@@ -1,7 +1,5 @@
-//extern crate tol;
 use tol::PARAMRES;
 use tol::Tol;
-
 
 pub struct Bspline<Point> {
     control_points: Vec<Point>,
@@ -88,52 +86,7 @@ impl <Point> KnotManip for Bspline<Point> {
     }
 }
 
-// struct RMat<'a>
-// {
-//     knots: &'a [f64],
-//     d: u32,
-// }
-
 use std::ops::{Add, SubAssign, AddAssign, Mul};
-
-// use point::{dlerp, lerp};
-// impl<'a> RMat<'a>
-// {
-//     fn reval<T: Mul<f64> + Copy + Add<T> + AddAssign<T> + SubAssign<T> >
-//         (&self, nu:usize, u:f64, der_order:u32, cache:&mut [T]) -> bool
-//     {
-//         assert!(self.knots[0] == u );
-//         let t =  self.knots;
-//         let mut fac : usize = 1;
-//         let size = self.d;
-//         if der_order > size {
-//             return true;
-//         }
-
-//         for d in (size - der_order)..size {
-//             let sz  = (size - d + 1) as usize;
-//             fac *= sz;
-//             for j in 1..(sz+1) {
-//                 let b = t[j] - t[j - sz];
-//                 if b.small_param() {
-//                     return false;
-//                 }
-//                 let lambda =  1 / b;
-//                 cache[j - 1] = dlerp(lambda, cache[j - 1], cache[j]);
-//             }
-//         }
-
-//         for d in 0..(size - der_order) {
-//             let sz = (size - d + 1) as usize;
-//             for j in 1..(sz + 1) {
-//                 let b = t[j] - t[j - sz];
-//                 let lambda =  sdiv(u  - t[j - sz], b);
-//                 cache[j - 1] = lerp(lambda, cache[j - 1], cache[j] );
-//             }
-//         }
-//         true
-//     }
-// }
 
 struct RMatExplicit<'a>
 {
@@ -145,16 +98,6 @@ struct RMatExplicit<'a>
 
 struct RMatExplicitDer<'a>(RMatExplicit<'a>);
 
-// static[ 	]+\([^ ]+\)[ 	]+\([^ 	]+\)(\([^\)]*\))
-// \([^ ]+\)[ 	]+\([^ 	]+\)(\([^\)]*\))
-
-impl <'a> RMatExplicit<'a>
-{
-    fn size(&'a self) -> u32
-    {
-        return self.d + 1;
-    }
-}
 
 trait Entries
 {
@@ -242,17 +185,7 @@ impl RMatExplicitResult
         }
         basis[0] *= T::get_diag_from_ndiag(c);
     }
-
-    fn get(&self, k: usize) -> f64
-    {
-        self.basis[k]
-    }
-
-    fn size(&self) -> usize
-    {
-        self.basis.len()
-    }
-
+  
     fn drain(self) -> Vec<f64>
     {
         self.basis
@@ -288,7 +221,7 @@ impl <T> Bspline<T> where T : Copy + Add<T> + Mul<f64, Output=T> + AddAssign<T> 
             rmat_der.0.d = j;
             res.mult( &rmat_der);
         }
-        res.basis
+        res.drain()
    }
 
     pub fn eval(&self, u : f64) -> T {
@@ -296,20 +229,13 @@ impl <T> Bspline<T> where T : Copy + Add<T> + Mul<f64, Output=T> + AddAssign<T> 
         let b = self.get_basis(nu, u, 0u32);
         let mut r:T =  Default::default();
         let d = self.deg as usize;
-        for j in 0..d+1
+        let cpts = &self.control_points[nu-d..];
+        for (&x, &y) in cpts.iter().zip(b.iter())
         {
-            let p = self.control_points[(nu - d + j) ] * b[j];
-            r += p;
+            r += x * y
         }
         r
     }
-
-    // fn modify(&self, modf : FnMut<Vec<Point>, Vec<f64> > ) -> Self
-    // {
-    //     (cpts, ks) = modf(self.control_points, self.knots);
-    //     Bspline::new(cpts, ks);
-    // }
-
 }
 
 #[test]
