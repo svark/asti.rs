@@ -9,7 +9,6 @@ use simd::x86::avx::f64x4;
 #[cfg(target_feature = "neon")]
 use simd::aarch64::neon::f64x2;
 
-use std::num::Zero;
 
 #[allow(non_camel_case_types)]
 #[cfg(all(not(target_feature = "sse2"), not(target_feature = "neon")))]
@@ -215,14 +214,14 @@ impl Default for Point4
     fn default() -> Point4 { Point4::splat(0.0) }
 }
 
-impl Zero for Point2
-{
-    fn zero() -> Point2 { Point2::splat(0.0) }
-}
-impl Zero for Point4
-{
-    fn zero() -> Point4 { Point4::splat(0.0) }
-}
+// impl Zero for Point2
+// {
+//     fn zero() -> Point2 { Point2::splat(0.0) }
+// }
+// impl Zero for Point4
+// {
+//     fn zero() -> Point4 { Point4::splat(0.0) }
+// }
 
 #[test]
 pub fn it_works()

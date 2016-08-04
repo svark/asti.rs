@@ -1,5 +1,4 @@
 #![feature(cfg_target_feature)]
-#![feature(zero_one)]
 extern crate simd;
 
 mod point;

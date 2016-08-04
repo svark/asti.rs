@@ -1,8 +1,7 @@
 //extern crate tol;
 use tol::PARAMRES;
 use tol::Tol;
-use point::{dlerp, lerp};
-use std::num::Zero;
+
 
 pub struct Bspline<Point> {
     control_points: Vec<Point>,
@@ -11,18 +10,21 @@ pub struct Bspline<Point> {
 }
 
 fn upper_bound(v: &Vec<f64>, x:f64) -> usize {
-    let mut lb:usize = 0;
-    let mut ub:usize = v.len();
-    while lb + 1 < ub {
-        let mid = (lb + ub) >> 1;
-        if x < v[mid] {
-            ub = mid;
+    let mut cnt:usize = v.len();
+    let mut ub = 0;
+    while cnt > 0 {
+        let step = cnt/2;
+        let mid = ub + step;
+        if x >= v[mid]   {
+            ub = mid + 1;
+            cnt -= step + 1;
         } else {
-            lb = mid;
+            cnt = step;
         }
     };
     ub
 }
+
 #[inline]
 fn sdiv(x: f64, y: f64) -> f64 {
     if y.small() {
@@ -77,10 +79,12 @@ impl <Point> KnotManip for Bspline<Point> {
             u = t[d] + PARAMRES/2.0;
         }
         if u >= t[ncpts] {
-            u = t[ncpts] + PARAMRES/2.0;
+            u = t[ncpts] - PARAMRES/2.0;
         }
 
-        upper_bound(&t,u) - 1
+        let idx = upper_bound(&t,u) - 1;
+        assert!(idx >= d && idx < ncpts);
+        idx
     }
 }
 
@@ -90,8 +94,9 @@ impl <Point> KnotManip for Bspline<Point> {
 //     d: u32,
 // }
 
-use std::ops::{Add, Sub, SubAssign, AddAssign, Mul};
+use std::ops::{Add, SubAssign, AddAssign, Mul};
 
+// use point::{dlerp, lerp};
 // impl<'a> RMat<'a>
 // {
 //     fn reval<T: Mul<f64> + Copy + Add<T> + AddAssign<T> + SubAssign<T> >
@@ -134,7 +139,8 @@ struct RMatExplicit<'a>
 {
     knots: &'a [f64],
     d: u32,
-    tau: f64
+    tau: f64,
+    offset: usize
 }
 
 struct RMatExplicitDer<'a>(RMatExplicit<'a>);
@@ -152,87 +158,89 @@ impl <'a> RMatExplicit<'a>
 
 trait Entries
 {
-    fn get_diag(&self, i: usize) -> f64;
+    fn get_diag_from_ndiag(v: f64) -> f64;
     fn get_ndiag(&self, i: usize) -> f64;
     fn size(&self) -> usize;
-    fn lp(lambda: f64, y: f64, z: f64) -> f64;
+    fn get_knots(&self) -> &[f64];
+
 }
 
 impl<'a> Entries for RMatExplicit<'a>
 {
-    fn get_diag(&self, i: usize) -> f64
-    {
-        let k = self.d as usize;
-        let denom = self.knots[i + 1] - self.knots[i + 1 - k];
-        sdiv(self.knots[i + 1] - self.tau, denom)
-    }
-
+    #[inline]
     fn get_ndiag(&self, i: usize) -> f64
     {
-        1.0 - self.get_diag(i)
+        let k = self.d as usize;
+        let t = self.knots;
+        let idx = i + 1 + self.offset;
+        assert!(idx >= k);
+        let denom = t[idx] - t[idx - k];
+        sdiv(self.tau - t[idx - k], denom)
     }
 
+    #[inline]
+    fn get_diag_from_ndiag(v: f64) -> f64
+    {
+        1.0 - v
+    }
+
+    #[inline]
     fn size(&self) -> usize { self.d as usize + 1  }
 
-    fn lp(lambda: f64, y: f64, z: f64) -> f64  { lerp(lambda, y, z) }
+    #[inline]
+    fn get_knots(&self) -> &[f64] { self.knots }
 }
 
 
 impl<'a> Entries for RMatExplicitDer<'a>
 {
-    fn get_diag(&self, i: usize) -> f64
-    {
-        let k = self.0.d;
-        let t = self.0.knots;
-        let denom = t[i + 1] - t[i + 1 - k as usize];
-        -1.0/denom
-    }
-
+    #[inline]
     fn get_ndiag(&self, i: usize) -> f64
     {
-        -self.get_diag(i)
+        let k = self.0.d as usize;
+        let t = self.0.knots;
+        let idx = i + 1 + self.0.offset;
+        assert!(idx >= k);
+        let denom = t[idx] - t[idx - k];
+        1.0/denom
     }
 
+    #[inline]
+    fn get_diag_from_ndiag(v : f64) -> f64
+    {
+        -v
+    }
+
+    #[inline]
     fn size(&self) -> usize{ self.0.d as usize + 1  }
 
-    fn lp(lambda: f64, y: f64, z: f64) -> f64 { dlerp( lambda, y, z) }
+    #[inline]
+    fn get_knots(&self) -> &[f64] { self.0.knots }
 }
 
-struct RMatExplicitResult<'a>
+struct RMatExplicitResult
 {
-    knots : &'a [f64],
     basis : Vec<f64>
 }
 
-impl<'a> RMatExplicitResult<'a>
+impl RMatExplicitResult
 {
-    fn apply<T>(t: &Vec<f64>, mat : &T, i: usize) -> f64
-        where T: Entries
-    {
-        let sz = t.len();
-        if  i == sz
-        {
-            t[i-1] * mat.get_ndiag(i-1)
-        }else if  i == 0
-        {
-            t[0] * mat.get_diag(0)
-        }
-        else {
-            T::lp(mat.get_ndiag(i-1), t[i], t[i-1])
-        }
-    }
 
-    fn mult<'b, T>(&'b mut self, kim: &T) where T: Entries
+    fn mult<T>(&mut self, mat: &T) where T: Entries
     {
-        let num_cols = kim.size();
-        assert_eq!(self.basis.len() + 1 , num_cols); // mult order
-        let t = &mut self.basis;
-        let e = t[num_cols - 2] * kim.get_ndiag(num_cols - 2);
-        t.resize(num_cols, 0.0);
-        for l in 0..num_cols {
-            let k = num_cols - 1 - l;
-            t[k] = Self::apply(t, kim, k);
+        let basis = &mut self.basis;
+        let num_cols = basis.len();
+        assert_eq!(mat.size(), num_cols + 1);
+        let mut c = mat.get_ndiag(num_cols-1);
+        let e = basis[num_cols-1] * c;
+        basis.resize(num_cols + 1 , e);
+        for l in 1..num_cols {
+            let k = num_cols - l;
+            let b = T::get_diag_from_ndiag(c);
+            c = mat.get_ndiag(k-1);
+            basis[k]  = b * basis[k]  + c * basis[k-1];
         }
+        basis[0] *= T::get_diag_from_ndiag(c);
     }
 
     fn get(&self, k: usize) -> f64
@@ -261,8 +269,14 @@ impl <T> Bspline<T> where T : Copy + Add<T> + Mul<f64, Output=T> + AddAssign<T> 
 
     fn get_basis(&self, nu: usize, u: f64, der_order: u32) -> Vec<f64>
     {
-        let mut res = RMatExplicitResult { knots: &self.knots, basis : vec![1.0f64] };
-        let mut rmat_noder = RMatExplicit{knots : &self.knots[nu..], d: 0, tau: u};
+        let mut res = RMatExplicitResult {
+            basis: vec![1.0f64]
+        };
+        res.basis.reserve( self.deg as usize );
+        let mut rmat_noder = RMatExplicit{
+            knots : &self.knots.as_slice(),
+            d: 0, tau: u, offset : nu
+        };
         for j in 1..(self.deg - der_order+1)
         {
             rmat_noder.d = j;
@@ -282,7 +296,7 @@ impl <T> Bspline<T> where T : Copy + Add<T> + Mul<f64, Output=T> + AddAssign<T> 
         let b = self.get_basis(nu, u, 0u32);
         let mut r:T =  Default::default();
         let d = self.deg as usize;
-        for j in 0..d
+        for j in 0..d+1
         {
             let p = self.control_points[(nu - d + j) ] * b[j];
             r += p;
