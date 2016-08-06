@@ -6,7 +6,7 @@ pub struct Bspline<Point> {
     knots: Vec<f64>,
     deg : u32
 }
-
+// its a pity rust does not have upper_bound
 fn upper_bound(v: &Vec<f64>, x:f64) -> usize {
     let mut cnt:usize = v.len();
     let mut ub = 0;
@@ -88,37 +88,35 @@ impl <Point> KnotManip for Bspline<Point> {
 
 use std::ops::{Add, SubAssign, AddAssign, Mul};
 
-struct RMatExplicit<'a>
+
+struct RMatTau<'a,'b>
 {
     knots: &'a [f64],
-    d: u32,
-    tau: f64,
+    tau: &'b [f64],
     offset: usize
 }
 
-struct RMatExplicitDer<'a>(RMatExplicit<'a>);
+struct RMatExplicitDer<'a,'b>(RMatTau<'a,'b>);
 
 
 trait Entries
 {
     fn get_diag_from_ndiag(v: f64) -> f64;
-    fn get_ndiag(&self, i: usize) -> f64;
-    fn size(&self) -> usize;
+    fn get_ndiag(&self, k: usize, i: usize) -> f64;
     fn get_knots(&self) -> &[f64];
 
 }
 
-impl<'a> Entries for RMatExplicit<'a>
+impl<'a,'b> Entries for RMatTau<'a,'b>
 {
     #[inline]
-    fn get_ndiag(&self, i: usize) -> f64
+    fn get_ndiag(&self, k: usize, i: usize) -> f64
     {
-        let k = self.d as usize;
         let t = self.knots;
         let idx = i + 1 + self.offset;
         assert!(idx >= k);
         let denom = t[idx] - t[idx - k];
-        sdiv(self.tau - t[idx - k], denom)
+        sdiv(self.tau[i] - t[idx - k], denom)
     }
 
     #[inline]
@@ -128,19 +126,15 @@ impl<'a> Entries for RMatExplicit<'a>
     }
 
     #[inline]
-    fn size(&self) -> usize { self.d as usize + 1  }
-
-    #[inline]
     fn get_knots(&self) -> &[f64] { self.knots }
 }
 
 
-impl<'a> Entries for RMatExplicitDer<'a>
+impl<'a,'b> Entries for RMatExplicitDer<'a,'b>
 {
     #[inline]
-    fn get_ndiag(&self, i: usize) -> f64
+    fn get_ndiag(&self, k: usize, i: usize) -> f64
     {
-        let k = self.0.d as usize;
         let t = self.0.knots;
         let idx = i + 1 + self.0.offset;
         assert!(idx >= k);
@@ -153,9 +147,6 @@ impl<'a> Entries for RMatExplicitDer<'a>
     {
         -v
     }
-
-    #[inline]
-    fn size(&self) -> usize{ self.0.d as usize + 1  }
 
     #[inline]
     fn get_knots(&self) -> &[f64] { self.0.knots }
@@ -173,19 +164,17 @@ impl RMatExplicitResult
     {
         let basis = &mut self.basis;
         let num_cols = basis.len();
-        assert_eq!(mat.size(), num_cols + 1);
-        let mut c = mat.get_ndiag(num_cols-1);
+        let mut c = mat.get_ndiag(num_cols, num_cols-1);
         let e = basis[num_cols-1] * c;
         basis.resize(num_cols + 1 , e);
         for l in 1..num_cols {
             let k = num_cols - l;
             let b = T::get_diag_from_ndiag(c);
-            c = mat.get_ndiag(k-1);
+            c = mat.get_ndiag(k, k-1);
             basis[k]  = b * basis[k]  + c * basis[k-1];
         }
         basis[0] *= T::get_diag_from_ndiag(c);
     }
-  
     fn drain(self) -> Vec<f64>
     {
         self.basis
@@ -202,27 +191,33 @@ impl <T> Bspline<T> where T : Copy + Add<T> + Mul<f64, Output=T> + AddAssign<T> 
 
     fn get_basis(&self, nu: usize, u: f64, der_order: u32) -> Vec<f64>
     {
+        let rmat = RMatTau{
+            knots : &self.knots.as_slice(),
+            tau: &vec![u;self.deg as usize], offset : nu
+        };
+
+        self.get_blossom_basis(der_order, rmat)
+    }
+
+    fn get_blossom_basis<'a,'b>(&self, der_order : u32, rmat : RMatTau<'a,'b>) -> Vec<f64>
+    {
         let mut res = RMatExplicitResult {
             basis: vec![1.0f64]
         };
         res.basis.reserve( self.deg as usize );
-        let mut rmat_noder = RMatExplicit{
-            knots : &self.knots.as_slice(),
-            d: 0, tau: u, offset : nu
-        };
-        for j in 1..(self.deg - der_order+1)
+
+        for _ in 1..(self.deg - der_order+1)
         {
-            rmat_noder.d = j;
-            res.mult(&rmat_noder);
+            res.mult(&rmat);
         }
-        let mut rmat_der = RMatExplicitDer(rmat_noder);
-        for j in (self.deg - der_order + 1)..(self.deg+1)
+
+        let rmat_der = RMatExplicitDer(rmat);
+        for _ in (self.deg - der_order + 1)..(self.deg+1)
         {
-            rmat_der.0.d = j;
-            res.mult( &rmat_der);
+            res.mult(&rmat_der);
         }
         res.drain()
-   }
+    }
 
     pub fn eval(&self, u : f64) -> T {
         let nu  = self.locate_nu(u)  ;
