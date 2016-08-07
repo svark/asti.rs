@@ -189,15 +189,6 @@ impl <T> Bspline<T> where T : Copy + Add<T> + Mul<f64, Output=T> + AddAssign<T> 
         Bspline{ control_points : cpts, knots: ks, deg: d as u32}
     }
 
-    fn get_basis(&self, nu: usize, u: f64, der_order: u32) -> Vec<f64>
-    {
-        let rmat = RMatTau{
-            knots : &self.knots.as_slice(),
-            tau: &vec![u;self.deg as usize], offset : nu
-        };
-
-        self.get_blossom_basis(der_order, rmat)
-    }
 
     fn get_blossom_basis<'a,'b>(&self, der_order : u32, rmat : RMatTau<'a,'b>) -> Vec<f64>
     {
@@ -220,10 +211,19 @@ impl <T> Bspline<T> where T : Copy + Add<T> + Mul<f64, Output=T> + AddAssign<T> 
     }
 
     pub fn eval(&self, u : f64) -> T {
-        let nu  = self.locate_nu(u)  ;
-        let b = self.get_basis(nu, u, 0u32);
-        let mut r:T =  Default::default();
         let d = self.deg as usize;
+        self.blossom_eval(&vec![u;d])
+    }
+
+    pub fn blossom_eval(&self, u : &[f64]) -> T {
+        let nu = self.locate_nu(u[0]);
+        let d = self.deg as usize;
+        let rmat = RMatTau{
+            knots : &self.knots.as_slice(),
+            tau: u, offset:nu
+        };
+        let b = self.get_blossom_basis(0, rmat);
+        let mut r:T =  Default::default();
         let cpts = &self.control_points[nu-d..];
         for (&x, &y) in cpts.iter().zip(b.iter())
         {
@@ -238,5 +238,10 @@ fn it_works()
 {
     let bs = Bspline {control_points: vec![0.0,1.0,0.5], knots : vec![1.0,1.0,1.0,2.0,2.0,2.0], deg : 2 };
     assert_eq!(bs.eval(1.0), 0.0);
+    assert_eq!(bs.eval(1.5), 0.625);
     assert_eq!(bs.eval(2.0), 0.5);
+
+    assert_eq!(bs.blossom_eval(&[1.0,1.0]) , 0.0);
+    assert_eq!(bs.blossom_eval(&[2.0,2.0]),  0.5);
+//    assert_eq!(bs.blossom_eval(&[1.0,2.0]), 1.0);
 }
