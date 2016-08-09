@@ -111,12 +111,14 @@ impl Sub for f64x4 {
     }
 }
 
+#[cfg(not(target_feature = "avx"))]
 impl AddAssign for f64x4 {
 fn add_assign(&mut self, p2: f64x4) {
     *self = *self + p2;
 }
 }
 
+#[cfg(not(target_feature = "avx"))]
 impl SubAssign for f64x4 {
 fn sub_assign(&mut self, p2: f64x4) {
     *self = *self - p2;
@@ -266,7 +268,7 @@ impl Sub for Point4 {
 
 impl SubAssign for Point4 {
     fn sub_assign(&mut self, p2: Point4) {
-        self.0 -= p2.0;
+        self.0 = self.0 - p2.0;
     }
 }
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -294,7 +296,7 @@ impl Sub for Point3 {
 
 impl SubAssign for Point3 {
     fn sub_assign(&mut self, p2: Point3) {
-        self.0 -= p2.0;
+        self.0 = self.0 - p2.0;
     }
 }
 
