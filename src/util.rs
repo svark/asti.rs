@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 // its a pity rust does not have upper_bound
-pub fn upper_bound<T>(v: &Vec<T>, x: T) -> usize
+pub fn upper_bound<T>(v: &[T], x: T) -> usize
     where T: PartialOrd<T>
 {
     let mut cnt: usize = v.len();

@@ -12,7 +12,7 @@ pub struct Bspline<Point> {
 
 
 #[inline]
-fn sdiv(x: f64, y: f64) -> f64 {
+pub fn sdiv(x: f64, y: f64) -> f64 {
     if y.small() {
         0.0f64
     } else {
@@ -29,21 +29,33 @@ trait KnotManip
     fn back(&self) -> f64;
     fn knots(&self) -> &Vec<f64>;
     fn locate_nu(&self, u: f64) -> usize;
-    fn param_range(&self) -> (f64,f64);
+    fn param_range(&self) -> (f64, f64);
+}
+
+pub fn locate_nu(u: f64, d: usize, t: &[f64]) -> usize {
+    let ncpts = t.len() - d - 1;
+    let mut u = u;
+    if u <= t[d] {
+        u = t[d] + PARAMRES / 2.0;
+    }
+    if u >= t[ncpts] {
+        u = t[ncpts] - PARAMRES / 2.0;
+    }
+    let idx = upper_bound(t, u) - 1;
+    assert!(idx >= d && idx < ncpts);
+    idx
 }
 
 impl<Point> KnotManip for Bspline<Point> {
-
     fn start_mult(&self) -> usize {
         let f = self.front();
-        self.knots.iter().take_while(|&x| (*x-f).small_param()).count()
+        self.knots.iter().take_while(|&x| (*x - f).small_param()).count()
     }
 
     fn end_mult(&self) -> usize {
         let l = self.back();
-        self.knots.iter().rev().take_while(|&x| (*x-l).small_param()).count()
+        self.knots.iter().rev().take_while(|&x| (*x - l).small_param()).count()
     }
-
 
     fn front(&self) -> f64 {
         self.knots[self.deg as usize]
@@ -57,7 +69,7 @@ impl<Point> KnotManip for Bspline<Point> {
         &self.knots
     }
 
-    fn param_range(&self) -> (f64,f64) {
+    fn param_range(&self) -> (f64, f64) {
         let t = &self.knots;
         let d = self.deg as usize;
         let ncpts = self.knots.len() - d - 1;
@@ -65,25 +77,13 @@ impl<Point> KnotManip for Bspline<Point> {
     }
 
     fn locate_nu(&self, u: f64) -> usize {
-        let d = self.deg as usize;
-        let ncpts = self.knots.len() - d - 1;
-        let t = &self.knots;
-        let mut u = u;
-        if u <= t[d] {
-            u = t[d] + PARAMRES / 2.0;
-        }
-        if u >= t[ncpts] {
-            u = t[ncpts] - PARAMRES / 2.0;
-        }
-
-        let idx = upper_bound(&t, u) - 1;
-        assert!(idx >= d && idx < ncpts);
-        idx
+        locate_nu(u, self.deg as usize, &self.knots)
     }
 
-    fn mult(&self, u : f64) -> usize {
+
+    fn mult(&self, u: f64) -> usize {
         let nu = self.locate_nu(u);
-        self.knots[..nu+1].iter().rev().take_while(|&x| (*x-u).small_param()).count()
+        self.knots[..nu + 1].iter().rev().take_while(|&x| (*x - u).small_param()).count()
     }
 }
 
@@ -189,67 +189,60 @@ impl<T> Bspline<T>
         }
     }
 
-    pub fn rebase(&self, taus : Vec<f64>) -> Bspline<T>
-    {
+    pub fn rebase(&self, taus: Vec<f64>) -> Bspline<T> {
         let d = self.deg as usize;
-        let  mut cpts : Vec<T> = Vec::new();
-        cpts.resize(taus.len() - d - 1, Default::default());
-        for i in 0..cpts.len()
-        {
-            cpts[i] = self.blossom_eval(0, &taus[i..]);
+        let mut cpts: Vec<T> = Vec::new();
+        let ncpts = taus.len() - d - 1;
+        cpts.reserve(ncpts);
+        for i in 0..ncpts {
+            cpts.push(self.blossom_eval(0, &taus[i..]));
         }
         Bspline::new(cpts, taus)
     }
 
-    pub fn insert_knot(&self, tau : f64) -> Bspline<T>
-    {
+    pub fn insert_knot(&self, tau: f64) -> Bspline<T> {
         let nu = self.locate_nu(tau);
-        let mut newts: Vec<f64> = self.knots[0..nu+1].iter().cloned().collect();
+        let mut newts: Vec<f64> = self.knots[0..nu + 1].iter().cloned().collect();
         newts.push(tau);
-        newts.extend(self.knots[nu+1..].iter());
+        newts.extend(self.knots[nu + 1..].iter());
         let spl = self.rebase(newts);
         spl
     }
 
 
-    pub fn insert_knots(&self, taus: &Vec<f64> ) -> Bspline<T>
-    {
+    pub fn insert_knots(&self, taus: &Vec<f64>) -> Bspline<T> {
         let merged = merge(&self.knots, taus);
         self.rebase(merged)
     }
 
-    pub fn is_valid(&self) -> Result<bool, &str>
-    {
-        if self.knots.len() != self.control_points.len() + self.deg as usize + 1 
-        {
+    pub fn is_valid(&self) -> Result<bool, &str> {
+        if self.knots.len() != self.control_points.len() + self.deg as usize + 1 {
             return Err("bad degree");
         }
-        if  self.deg < 1 {
+        if self.deg < 1 {
 
             return Err("zero degree");
         }
 
-        if self.control_points.len() < 1  {
+        if self.control_points.len() < 1 {
             return Err("too few cpts");
         }
 
         let t = &self.knots;
-        for j in 1..t.len()
-        {
-            let i = j -1;
+        for j in 1..t.len() {
+            let i = j - 1;
             if t[i] > t[j] {
-                return Err("knots not sorted")
+                return Err("knots not sorted");
             }
         }
-        let mut nextj : usize = 0;
-        for j in 0..t.len()
-        {
-            if  j < nextj {
-               continue;
+        let mut nextj: usize = 0;
+        for j in 0..t.len() {
+            if j < nextj {
+                continue;
             }
 
             let m = self.mult(self.knots[j]);
-            if  m > self.deg as usize + 1 {
+            if m > self.deg as usize + 1 {
                 return Err("too many dups in knots");
             }
 
@@ -311,7 +304,7 @@ fn it_works() {
     assert_eq!(bs.blossom_eval(0, &[1.0, 1.0, 2.0]), 1.0);
 
     let spl = bs.insert_knot(1.1);
-    assert_eq!(spl.is_valid(),  Ok(true));
+    assert_eq!(spl.is_valid(), Ok(true));
     assert_eq!(spl.eval(1.0), 0.0);
     assert_eq!(spl.eval(1.5), 0.625);
     assert_eq!(spl.eval(2.0), 0.5);

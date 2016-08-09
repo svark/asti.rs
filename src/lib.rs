@@ -6,6 +6,8 @@ pub mod point;
 pub mod tol;
 pub mod util;
 pub mod bspline;
+pub mod rational_bspline;
+pub mod smat;
 #[test]
 fn it_works() {
 
