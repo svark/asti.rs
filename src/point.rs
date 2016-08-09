@@ -1,5 +1,3 @@
-extern crate simd;
-
 #[cfg(target_feature = "sse2")]
 use simd::x86::sse2::f64x2;
 

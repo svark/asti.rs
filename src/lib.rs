@@ -1,8 +1,10 @@
 #![feature(cfg_target_feature)]
 extern crate simd;
+extern crate itertools;
 
 pub mod point;
 pub mod tol;
+pub mod util;
 pub mod bspline;
 #[test]
 fn it_works() {
