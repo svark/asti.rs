@@ -110,24 +110,17 @@ impl Sub for f64x4 {
         f64x4(self.0 - p2.0, self.1 - p2.1, self.2 - p2.2, self.3 - p2.3)
     }
 }
-#[cfg(not(target_feature = "avx"))]
+
 impl AddAssign for f64x4 {
-    fn add_assign(&mut self, p2: f64x4) {
-        self.0 += p2.0;
-        self.1 += p2.1;
-        self.2 += p2.2;
-        self.3 += p2.3;
-    }
+fn add_assign(&mut self, p2: f64x4) {
+    *self = *self + p2;
+}
 }
 
-#[cfg(not(target_feature = "avx"))]
 impl SubAssign for f64x4 {
-    fn sub_assign(&mut self, p2: f64x4) {
-        self.0 -= p2.0;
-        self.1 -= p2.1;
-        self.2 -= p2.2;
-        self.3 -= p2.3;
-    }
+fn sub_assign(&mut self, p2: f64x4) {
+    *self = *self - p2;
+}
 }
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 impl Add for f64x3 {
