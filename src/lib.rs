@@ -5,12 +5,14 @@ extern crate itertools;
 pub mod point;
 pub mod tol;
 pub mod util;
+pub mod vectorspace;
 pub mod bspline;
 pub mod rational_bspline;
 pub mod smat;
 #[test]
 fn it_works() {
 
+    use vectorspace::VectorSpace;
     let p = point::Point2::new(1.0, 1.0);
     let q = point::Point2::new(2.0, 0.0);
 

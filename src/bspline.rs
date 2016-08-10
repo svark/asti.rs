@@ -1,15 +1,13 @@
 use tol::PARAMRES;
 use tol::Tol;
-
+use vectorspace::VectorSpace;
 use util::{merge, upper_bound};
 
-pub struct Bspline<Point> {
+pub struct Bspline<Point:VectorSpace> {
     control_points: Vec<Point>,
     knots: Vec<f64>,
     deg: u32,
 }
-
-
 
 #[inline]
 pub fn sdiv(x: f64, y: f64) -> f64 {
@@ -20,16 +18,39 @@ pub fn sdiv(x: f64, y: f64) -> f64 {
     }
 }
 
-trait KnotManip
+pub trait KnotManip
 {
     fn start_mult(&self) -> usize;
     fn end_mult(&self) -> usize;
     fn mult(&self, u: f64) -> usize;
     fn front(&self) -> f64;
     fn back(&self) -> f64;
-    fn knots(&self) -> &Vec<f64>;
     fn locate_nu(&self, u: f64) -> usize;
-    fn param_range(&self) -> (f64, f64);
+    fn rebase(&self, taus: Vec<f64>) -> Self;
+    fn insert_knot(&self, tau: f64) -> Self;
+    fn insert_knots(&self, taus: &Vec<f64>) ->Self;
+}
+
+pub trait SplineData
+{
+    type T : VectorSpace;
+    fn control_points(&self) -> &Vec<Self::T>;
+    fn knots(&self) -> &Vec<f64> ;
+    fn degree(&self) -> u32;
+}
+
+impl<P> SplineData for Bspline<P> where P:VectorSpace
+{
+    type T = P;
+    fn control_points(&self) -> &Vec<P> {
+        &self.control_points
+    }
+    fn knots(&self) -> &Vec<f64> {
+        &self.knots
+    }
+    fn degree(&self) -> u32 {
+        self.deg
+    }
 }
 
 pub fn locate_nu(u: f64, d: usize, t: &[f64]) -> usize {
@@ -46,7 +67,7 @@ pub fn locate_nu(u: f64, d: usize, t: &[f64]) -> usize {
     idx
 }
 
-impl<Point> KnotManip for Bspline<Point> {
+impl<T> KnotManip for Bspline<T> where T:VectorSpace {
     fn start_mult(&self) -> usize {
         let f = self.front();
         self.knots.iter().take_while(|&x| (*x - f).small_param()).count()
@@ -65,29 +86,40 @@ impl<Point> KnotManip for Bspline<Point> {
         self.knots[self.knots.len() - 1 - (self.deg as usize)]
     }
 
-    fn knots(&self) -> &Vec<f64> {
-        &self.knots
-    }
-
-    fn param_range(&self) -> (f64, f64) {
-        let t = &self.knots;
-        let d = self.deg as usize;
-        let ncpts = self.knots.len() - d - 1;
-        (t[d], t[ncpts])
-    }
 
     fn locate_nu(&self, u: f64) -> usize {
         locate_nu(u, self.deg as usize, &self.knots)
     }
 
-
     fn mult(&self, u: f64) -> usize {
         let nu = self.locate_nu(u);
         self.knots[..nu + 1].iter().rev().take_while(|&x| (*x - u).small_param()).count()
     }
-}
 
-use std::ops::{Add, SubAssign, AddAssign, Mul};
+    fn rebase(&self, taus: Vec<f64>) -> Bspline<T> {
+        let d = self.deg as usize;
+        let ncpts = taus.len() - d - 1;
+        let mut cpts: Vec<T> = Vec::with_capacity(ncpts);
+        for i in 0..ncpts {
+            cpts.push(self.blossom_eval(0, &taus[i..]));
+        }
+        Bspline::new(cpts, taus)
+    }
+
+    fn insert_knot(&self, tau: f64) -> Bspline<T> {
+        let nu = self.locate_nu(tau);
+        let mut newts: Vec<f64> = self.knots[0..nu + 1].to_owned();
+        newts.push(tau);
+        newts.extend(self.knots[nu + 1..].iter());
+        let spl = self.rebase(newts);
+        spl
+    }
+
+    fn insert_knots(&self, taus: &Vec<f64>) -> Bspline<T> {
+        let merged = merge(&self.knots, taus);
+        self.rebase(merged)
+    }
+}
 
 
 struct RMatTau<'a, 'b> {
@@ -176,46 +208,14 @@ impl RMatExplicitResult {
     }
 }
 
-
-impl<T> Bspline<T>
-    where T: Copy + Add<T> + Mul<f64, Output = T> + AddAssign<T> + SubAssign<T> + Default
+pub trait ClassInvariant
 {
-    pub fn new(cpts: Vec<T>, ks: Vec<f64>) -> Bspline<T> {
-        let d = ks.len() - cpts.len() - 1;
-        Bspline {
-            control_points: cpts,
-            knots: ks,
-            deg: d as u32,
-        }
-    }
+    fn is_valid(&self) -> Result<bool,&str>;
+}
 
-    pub fn rebase(&self, taus: Vec<f64>) -> Bspline<T> {
-        let d = self.deg as usize;
-        let mut cpts: Vec<T> = Vec::new();
-        let ncpts = taus.len() - d - 1;
-        cpts.reserve(ncpts);
-        for i in 0..ncpts {
-            cpts.push(self.blossom_eval(0, &taus[i..]));
-        }
-        Bspline::new(cpts, taus)
-    }
-
-    pub fn insert_knot(&self, tau: f64) -> Bspline<T> {
-        let nu = self.locate_nu(tau);
-        let mut newts: Vec<f64> = self.knots[0..nu + 1].iter().cloned().collect();
-        newts.push(tau);
-        newts.extend(self.knots[nu + 1..].iter());
-        let spl = self.rebase(newts);
-        spl
-    }
-
-
-    pub fn insert_knots(&self, taus: &Vec<f64>) -> Bspline<T> {
-        let merged = merge(&self.knots, taus);
-        self.rebase(merged)
-    }
-
-    pub fn is_valid(&self) -> Result<bool, &str> {
+impl<P> ClassInvariant for Bspline<P> where P:VectorSpace
+{
+    fn is_valid(&self) -> Result<bool, &str> {
         if self.knots.len() != self.control_points.len() + self.deg as usize + 1 {
             return Err("bad degree");
         }
@@ -251,12 +251,25 @@ impl<T> Bspline<T>
         return Ok(true);
     }
 
-    pub fn eval(&self, u: f64) -> T {
-        let d = self.deg as usize;
-        self.blossom_eval(0, &vec![u;d+1])
-    }
+}
+pub trait Curve
+{
+    type T:VectorSpace;
+    fn param_range(&self)->(f64,f64);
+    fn eval(&self,v:f64) -> Self::T;
+    fn eval_derivative(&self, v:f64,order:u32) -> Self::T;
+}
 
-    pub fn blossom_eval(&self, der_order: u32, us: &[f64]) -> T {
+pub trait BlossomCurve
+{
+    type T : VectorSpace;
+    fn blossom_eval(&self, der_order: u32, us: &[f64]) -> Self::T;
+}
+
+impl<P> BlossomCurve for Bspline<P> where P:VectorSpace
+{
+    type T = P;
+    fn blossom_eval(&self, der_order: u32, us: &[f64]) -> P {
         let nu = self.locate_nu(us[0]);
         let d = self.deg as usize;
         let rmat = RMatTau {
@@ -278,12 +291,48 @@ impl<T> Bspline<T>
             }
             res.drain()
         };
-        let mut r: T = Default::default();
+        let mut r: P = Default::default();
         let cpts = &self.control_points[nu - d..];
         for (&x, &y) in cpts.iter().zip(b.iter()) {
-            r += x * y
+            r = r + x * y
         }
         r
+    }
+}
+
+
+impl<P> Curve for Bspline<P> where P:VectorSpace
+{
+    type T = P;
+    fn param_range(&self) -> (f64, f64) {
+        let t = &self.knots;
+        let d = self.deg as usize;
+        let ncpts = t.len() - d - 1;
+        (t[d], t[ncpts])
+    }
+
+    fn eval(&self, u: f64) -> P {
+        let d = self.deg as usize;
+        self.blossom_eval(0, &vec![u;d+1])
+    }
+
+    fn eval_derivative(&self, u: f64, order: u32) -> P
+    {
+        let d = self.deg as usize;
+        self.blossom_eval(order, &vec![u;d+1])
+    }
+}
+
+impl<T> Bspline<T>
+    where T: VectorSpace
+{
+    pub fn new(cpts: Vec<T>, ks: Vec<f64>) -> Bspline<T> {
+        let d = ks.len() - cpts.len() - 1;
+        Bspline {
+            control_points: cpts,
+            knots: ks,
+            deg: d as u32,
+        }
     }
 }
 
