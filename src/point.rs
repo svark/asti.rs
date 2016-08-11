@@ -112,6 +112,26 @@ impl Sub for f64x4 {
 }
 
 #[cfg(not(target_feature = "avx"))]
+impl Mul<f64x4> for f64x4 {
+    type Output = f64x4;
+
+    fn mul(self, p2: f64x4) -> f64x4 {
+        f64x4(self.0 * p2.0, self.1 * p2.1, self.2 * p2.2, self.3 * p2.3)
+    }
+}
+
+#[cfg(not(target_feature = "avx"))]
+impl Mul<f64> for f64x4 {
+    type Output = f64x4;
+
+    fn mul(self, p2: f64) -> f64x4 {
+        f64x4(self.0 * p2, self.1 * p2, self.2 * p2, self.3 * p2)
+    }
+}
+
+
+
+#[cfg(not(target_feature = "avx"))]
 impl AddAssign for f64x4 {
     fn add_assign(&mut self, p2: f64x4) {
         *self = *self + p2;
@@ -146,6 +166,22 @@ impl Sub for f64x3 {
 
     fn sub(self, p2: f64x3) -> f64x3 {
         f64x3(self.0 - p2.0, self.1 - p2.1, self.2 - p2.2)
+    }
+}
+
+impl Mul<f64x3> for f64x3 {
+    type Output = f64x3;
+
+    fn mul(self, p2: f64x3) -> f64x3 {
+        f64x3(self.0 * p2.0, self.1 * p2.1, self.2 * p2.2)
+    }
+}
+
+impl Mul<f64> for f64x3 {
+    type Output = f64x3;
+
+    fn mul(self, p2: f64) -> f64x3 {
+        f64x3(self.0 * p2, self.1 * p2, self.2 * p2)
     }
 }
 
@@ -371,10 +407,18 @@ impl VectorSpace for Point1 {
     fn ldim(&self) -> Point1 {
         panic!("hit the lower limit");
     }
+
     fn hdim(&self, pad: f64) -> Point2 {
         Point2::new(*self, pad)
     }
+
+    fn dot(&self,v:&Self) -> f64 {
+        self * v
+    }
+
+    fn len(&self) -> f64 { self.abs() }
 }
+
 impl VectorSpace for Point2 {
 
     fn dim() -> u32 {
@@ -399,12 +443,19 @@ impl VectorSpace for Point2 {
 
     type L = Point1;
     type H = Point3;
+
     fn ldim(&self) -> Point1 {
         self.extract(0)
     }
     fn hdim(&self, pad: f64) -> Point3 {
         Point3::new(self.extract(0), self.extract(1), pad)
     }
+
+    fn dot(&self,v:&Self) -> f64 {
+        let u = self.0 * v.0;
+        u.extract(0) + u.extract(1)
+    }
+
 }
 impl VectorSpace for Point3 {
     fn dim() -> u32 {
@@ -425,11 +476,17 @@ impl VectorSpace for Point3 {
 
     type L = Point2;
     type H = Point4;
+
     fn ldim(&self) -> Point2 {
         Point2::new(self.extract(0), self.extract(1))
     }
     fn hdim(&self, pad: f64) -> Point4 {
         Point4::new(self.extract(0), self.extract(1), self.extract(2), pad)
+    }
+
+    fn dot(&self,v:&Self) -> f64 {
+        let u = self.0 * v.0;
+        u.extract(0) + u.extract(1) + u.extract(2)
     }
 }
 
@@ -451,11 +508,18 @@ impl VectorSpace for Point4 {
     }
     type L = Point3;
     type H = Point4;
+
     fn ldim(&self) -> Point3 {
         Point3::new(self.extract(0), self.extract(1), self.extract(2))
     }
+
     fn hdim(&self, _: f64) -> Point4 {
         panic!("hit the upper limit")
+    }
+
+    fn dot(&self,v:&Self) -> f64 {
+        let u = self.0 * v.0;
+        u.extract(0) + u.extract(1) + u.extract(2) + u.extract(3)
     }
 }
 
@@ -466,5 +530,5 @@ pub fn it_works() {
     let p = Point2::new(1.0, 2.0);
     let q: Point2 = Default::default();
     let r = p.lerp(0.2, q);
-    println!("{:?}, {:?}", r, p.dlerp(0.2, q));
+    assert!(((r-p).len()/(q-r).len() - 0.25) < 1e-8);
 }

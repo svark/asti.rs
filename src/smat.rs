@@ -1,5 +1,5 @@
 use vectorspace::VectorSpace;
-use bspline::{locate_nu, sdiv};
+use rmat::{locate_nu, sdiv};
 
 pub struct Smat<'a> {
     a: f64,
@@ -25,7 +25,7 @@ impl<'a> Smat<'a> {
         let size: usize = self.deg as usize + 1;
         let t = self.knots;
         for j in 0..size {
-            let mut cacheb: Vec<T> = cachea[0..size].iter().cloned().collect();
+            let mut cacheb: Vec<T> = cachea[0..size].to_owned();
             for sz in (j + 1..size).rev() {
                 let lambda = sdiv(t[j + 1 - sz] - self.a, self.b - self.a);
                 for i in 0..sz {
@@ -48,7 +48,7 @@ impl<'a> Smat<'a> {
         let size: usize = self.deg as usize + 1;
         let t = &self.knots;
         for i in 0..size {
-            let mut cacheb: Vec<T> = cachea[0..size].iter().cloned().collect();
+            let mut cacheb: Vec<T> = cachea[0..size].to_owned();
             for sz in ((i + 1)..size).rev() {
                 for j in 1..sz + 1 {
                     let lambda = sdiv(self.a - t[j - sz], t[j] - t[j - sz]);
