@@ -6,6 +6,7 @@ pub trait SplineData
     fn control_points(&self) -> &Vec<Self::T>;
     fn knots(&self) -> &Vec<f64> ;
     fn degree(&self) -> u32;
+    fn new(cpts: Vec<Self::T>, ts : Vec<f64>) -> Self;
 }
 
 pub trait KnotManip

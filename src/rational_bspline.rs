@@ -6,15 +6,6 @@ pub struct RationalBspline<Point: VectorSpace> {
     spl: Bspline<Point::H>,
 }
 
-impl<Point> RationalBspline<Point>
-    where Point: VectorSpace
-{
-    pub fn new(control_points: Vec<Point::H>, knots: Vec<f64>) -> RationalBspline<Point> {
-        let spl = Bspline::new(control_points, knots);
-        RationalBspline { spl: spl }
-    }
-}
-
 impl<Point> SplineData for RationalBspline<Point>
     where Point: VectorSpace
 {
@@ -27,6 +18,11 @@ impl<Point> SplineData for RationalBspline<Point>
     }
     fn degree(&self) -> u32 {
         self.spl.degree()
+    }
+
+    fn new(control_points: Vec<Self::T>, knots: Vec<f64>) -> RationalBspline<Point> {
+        let spl = Bspline::new(control_points, knots);
+        RationalBspline { spl: spl }
     }
 }
 

@@ -1,5 +1,5 @@
 use std::f64::INFINITY;
-use tol::{PARAMRES, RESABS};
+use tol::PARAMRES;
 use util::upper_bound;
 use tol::Tol; // for small_param
 
@@ -55,7 +55,7 @@ impl<'a, 'b> Entries for RMatExplicitDer<'a, 'b> {
         let idx = sz + self.0.offset;
         assert!(idx >= sz);
         let denom = t[idx] - t[idx - d];
-        if denom.abs() < RESABS {
+        if denom.abs() < PARAMRES {
             INFINITY * denom.signum()
         } else {
             d as f64 / denom

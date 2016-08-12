@@ -25,6 +25,16 @@ impl<P> SplineData for Bspline<P>
     fn degree(&self) -> u32 {
         self.deg
     }
+
+    fn new(cpts: Vec<P>, ks: Vec<f64>) -> Bspline<P> {
+        let d = ks.len() - cpts.len() - 1;
+        Bspline {
+            control_points: cpts,
+            knots: ks,
+            deg: d as u32,
+        }
+    }
+
 }
 
 
@@ -169,18 +179,6 @@ impl<P> Curve for Bspline<P>
     }
 }
 
-impl<T> Bspline<T>
-    where T: VectorSpace
-{
-    pub fn new(cpts: Vec<T>, ks: Vec<f64>) -> Bspline<T> {
-        let d = ks.len() - cpts.len() - 1;
-        Bspline {
-            control_points: cpts,
-            knots: ks,
-            deg: d as u32,
-        }
-    }
-}
 
 #[test]
 fn it_works() {
