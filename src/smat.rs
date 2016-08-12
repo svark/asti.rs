@@ -8,6 +8,7 @@ pub struct Smat<'a> {
     b: f64,
     knots: &'a [f64],
     deg: u32,
+    nu : usize,
 }
 
 impl<'a> Smat<'a> {
@@ -16,8 +17,9 @@ impl<'a> Smat<'a> {
         Smat {
             a: a,
             b: b,
-            knots: &knots[nu..],
+            knots: knots,
             deg: deg,
+            nu : nu
         }
     }
 
@@ -26,17 +28,18 @@ impl<'a> Smat<'a> {
     {
         let size: usize = self.deg as usize + 1;
         let t = self.knots;
+        let nu = self.nu;
         let mut cachec = Vec::with_capacity(cachea.len());
         for j in 0..size {
             let mut cacheb: Vec<T> = cachea[0..size].to_owned();
             for sz in (j + 1..size).rev() {
-                let lambda = sdiv(t[j + 1 - sz] - self.a, self.b - self.a);
+                let lambda = sdiv(t[j + 1 + nu - sz] - self.a, self.b - self.a);
                 for i in 0..sz {
                     cacheb[i] = cacheb[i].lerp(lambda, cacheb[i + 1]);
                 }
             }
             for sz in (1..j + 1).rev() {
-                let mu = sdiv(t[sz] - self.a, self.b - self.a);
+                let mu = sdiv(t[sz + nu] - self.a, self.b - self.a);
                 for i in 0..sz {
                     cacheb[i] = cacheb[i].lerp(mu, cacheb[i + 1]);
                 }
@@ -51,18 +54,19 @@ impl<'a> Smat<'a> {
     {
         let size: usize = self.deg as usize + 1;
         let t = &self.knots;
+        let nu = self.nu;
         let mut cachec = Vec::with_capacity(cachea.len());
         for i in 0..size {
             let mut cacheb: Vec<T> = cachea[0..size].to_owned();
             for sz in ((i + 1)..size).rev() {
                 for j in 1..sz + 1 {
-                    let lambda = sdiv(self.a - t[j - sz], t[j] - t[j - sz]);
+                    let lambda = sdiv(self.a - t[j + nu - sz], t[j + nu] - t[j + nu - sz]);
                     cacheb[j - 1] = cacheb[j - 1].lerp(lambda, cacheb[j]);
                 }
             }
             for sz in (1..i + 1).rev() {
                 for j in 1..sz + 1 {
-                    let mu = sdiv(self.b - t[j - sz], t[j] - t[j - sz]);
+                    let mu = sdiv(self.b - t[j + nu- sz], t[j + nu] - t[j  + nu - sz]);
                     cacheb[j - 1] = cacheb[j - 1].lerp(mu, cacheb[j]);
                 }
             }
@@ -93,7 +97,7 @@ pub fn rebase_at_left<T>(spl: &T, a: f64, us: &[f64]) -> T
     let t = {
         // knots updated to rebase at `a'
         let mut ks = t[(nu - deg)..].to_owned();
-        for j in 0..(deg + 2) {
+        for j in 0..(deg + 1) {
             ks[j] = us[j];
         }
         ks
@@ -152,4 +156,18 @@ pub fn clamp_at_left<T>(b: f64, spl: &T)
     where T: SplineData
 {
     rebase_at_left(spl, b, &vec![b; spl.degree() as usize + 1]);
+}
+
+#[test]
+fn it_works(){   
+    use bspline::{Bspline};
+    use splinedata::{SplineData};
+    use curve::Curve;
+    use tol::RESABS;
+    let spl = Bspline::new(vec![0.,0.5,0.],  vec![0.,0.,0.,1.,1.,1.]);
+    let pt_01 = spl.eval(0.1);
+    let spl = rebase_at_left(&spl, 0., &vec![-0.2,-0.1,0.0]);
+    assert!((spl.eval(0.1)- pt_01).len() < RESABS);
+    let spl = rebase_at_left(&spl, 0., &vec![0.,0.,0.]);
+    assert!(spl.control_points().iter().zip(vec![0.,0.5,0.].iter()).all(|(&x,&y)| (x-y).abs() <1.0e-8));
 }
