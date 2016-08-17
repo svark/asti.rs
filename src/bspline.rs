@@ -69,8 +69,16 @@ impl <SplType> KnotManip for SplType where SplType:SplineData
     }
 
     fn mult(&self, u: f64) -> usize {
-        let nu = self.locate_nu(u);
-        self.knots()[..nu + 1].iter().rev().take_while(|&x| (*x - u).small_param()).count()
+        let f = self.front();
+        let b = self.back();
+        if (u - b).small() { self.end_mult()}
+        else if ( u - f).small() { self.start_mult() }
+        else if u > b { 0 }
+        else if u < f { 0 }
+        else {
+            let nu = self.locate_nu(u);
+            self.knots()[..nu + 1].iter().rev().take_while(|&x| (*x - u).small_param()).count()
+        }
     }
 
     fn rebase(&self, taus: Vec<f64>) -> Self {
