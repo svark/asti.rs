@@ -2,6 +2,7 @@ use std::f64::INFINITY;
 use tol::PARAMRES;
 use util::upper_bound;
 use tol::Tol; // for small_param
+use std::ops::{MulAssign};
 
 struct RMatTau<'a, 'b> {
     knots: &'a [f64],
@@ -78,14 +79,20 @@ struct RMatExplicitResult {
 }
 
 impl RMatExplicitResult {
-    fn new_with_capacity(c: usize) -> RMatExplicitResult {
+    fn with_capacity(c: usize) -> RMatExplicitResult {
         let mut b = Vec::with_capacity(c);
         b.push(1.0);
         RMatExplicitResult { basis: b }
     }
 
-    fn mult<T>(&mut self, mat: &T)
-        where T: Entries
+    fn drain(self) -> Vec<f64> {
+        self.basis
+    }
+}
+
+impl<'a, T:Entries> MulAssign<&'a T> for RMatExplicitResult
+{
+    fn mul_assign(&mut self, mat: &'a T)
     {
         let basis = &mut self.basis;
         let num_cols = basis.len();
@@ -98,9 +105,6 @@ impl RMatExplicitResult {
             basis[k] = b * basis[k] + c * basis[k - 1];
         }
         basis[0] *= T::get_diag_from_ndiag(c);
-    }
-    fn drain(self) -> Vec<f64> {
-        self.basis
     }
 }
 
@@ -118,7 +122,9 @@ pub fn locate_nu(u: f64, d: usize, t: &[f64]) -> usize {
     idx
 }
 
-pub fn eval(knots: &[f64], us: &[f64], nu: Option<usize>, deg: u32, der_order: u32) -> Vec<f64> {
+pub fn eval(knots: &[f64], us_nu: (&[f64], Option<usize>), deg: u32, der_order: u32  ) -> Vec<f64> {
+
+    let (us,nu) = us_nu;
     assert!(us.len() > 0);
     let mu = nu.unwrap_or(locate_nu(us[0], deg as usize, knots));
     assert!(mu < knots.len());
@@ -129,16 +135,16 @@ pub fn eval(knots: &[f64], us: &[f64], nu: Option<usize>, deg: u32, der_order: u
         offset: mu,
     };
 
-    let mut res = RMatExplicitResult::new_with_capacity(deg as usize + 1);
+    let mut res = RMatExplicitResult::with_capacity(deg as usize + 1);
 
     for _ in 1..(deg - der_order + 1) {
-        res.mult(&rmat_tau);
+        res *= &rmat_tau;
     }
 
     let rmat_der = RMatExplicitDer(rmat_tau);
     for j in (deg - der_order + 1)..(deg + 1) {
         assert_eq!(res.basis.len(), j as usize);
-        res.mult(&rmat_der);
+        res *= &rmat_der;
     }
     res.drain()
 }

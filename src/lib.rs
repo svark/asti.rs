@@ -10,6 +10,7 @@ pub mod rmat;
 pub mod splinedata;
 pub mod curve;
 pub mod bspline;
+pub mod periodic_spline;
 pub mod rational_bspline;
 pub mod smat;
 #[test]
