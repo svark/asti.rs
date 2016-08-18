@@ -117,7 +117,9 @@ pub fn locate_nu(u: f64, d: usize, t: &[f64]) -> usize {
     if u >= t[ncpts] {
         u = t[ncpts] - PARAMRES / 2.0;
     }
+    println!("look for:{:?} in {:?}" , u, t);
     let idx = upper_bound(t, u) - 1;
+    println!("check id:{} in range [{},{})", idx, d, ncpts);
     assert!(idx >= d && idx < ncpts);
     idx
 }
@@ -126,7 +128,13 @@ pub fn eval(knots: &[f64], us_nu: (&[f64], Option<usize>), deg: u32, der_order: 
 
     let (us,nu) = us_nu;
     assert!(us.len() > 0);
-    let mu = nu.unwrap_or(locate_nu(us[0], deg as usize, knots));
+    let mu = {
+        if let Some(mu) = nu {
+            mu
+        }else {
+            locate_nu(us[0], deg as usize, knots)
+        }
+    };
     assert!(mu < knots.len());
 
     let rmat_tau = RMatTau {

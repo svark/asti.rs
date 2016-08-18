@@ -1,5 +1,7 @@
 #![feature(cfg_target_feature)]
+#[cfg(target_feature = "sse2")]
 extern crate simd;
+
 extern crate itertools;
 
 pub mod point;
@@ -9,9 +11,11 @@ pub mod vectorspace;
 pub mod rmat;
 pub mod splinedata;
 pub mod curve;
+pub mod class_invariant;
 pub mod bspline;
 pub mod periodic_spline;
 pub mod rational_bspline;
+pub mod bezier;
 pub mod smat;
 #[test]
 fn it_works() {

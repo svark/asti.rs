@@ -12,8 +12,7 @@ pub struct Smat<'a> {
 }
 
 impl<'a> Smat<'a> {
-    pub fn new(a: f64, b: f64, knots: &[f64], deg: u32) -> Smat {
-        let nu = locate_nu(a, deg as usize, knots);
+    pub fn new(a: f64, b: f64, knots: &[f64], nu: usize, deg: u32) -> Smat {
         Smat {
             a: a,
             b: b,
@@ -84,12 +83,12 @@ pub fn rebase_at_left<T>(spl: &T, a: f64, us: &[f64]) -> T
     let deg = spl.degree() as usize;
     let cpts = spl.control_points();
 
-    let nu = locate_nu(a, deg, t);
+    let nu = locate_nu(a + PARAMRES/4.0, deg, t);
 
     debug_assert!(us.iter().all(|&u| u <= a));
     let b = t[nu + 1];
     let cpts = {
-        let sm_t = Smat::new(a, b, t, spl.degree());
+        let sm_t = Smat::new(a, b, t, nu, spl.degree());
         // get cpts wrt bernstein basis
         sm_t.seval(&cpts[(nu - deg)..])
     };
@@ -102,13 +101,15 @@ pub fn rebase_at_left<T>(spl: &T, a: f64, us: &[f64]) -> T
         }
         ks
     };
-
-    let cpts = {
+    let mut cpts = {
         // get cpts wrt bspline basis
-        let sm_ks = Smat::new(a, b, t.as_slice(), spl.degree());
-        sm_ks.reval(cpts.as_slice())
+        let nu = locate_nu(a, deg, &t);
+        let sm_ks = Smat::new(a, b, &t, nu, spl.degree());
+        sm_ks.reval(&cpts)
     };
-
+    if nu + 1 < spl.control_points().len() {
+        cpts.extend(spl.control_points()[nu+1..].to_owned());
+    }
     T::new(cpts, t)
 }
 
@@ -118,48 +119,67 @@ pub fn rebase_at_right<T>(spl: &T, b: f64, us: &[f64]) -> T
     let t = spl.knots();
     let deg = spl.degree() as usize;
     let cpts = spl.control_points();
-    let nu = locate_nu(b - PARAMRES / 2.0, deg, t);
+    let nu = locate_nu(b - PARAMRES / 4.0, deg, t);
     let a = t[nu];
 
     debug_assert!(us.iter().all(|&u| u >= b));
 
     // get cpts wrt bernstein basis
     let cpts = {
-        let sm_t = Smat::new(a, b, t, spl.degree());
-        sm_t.seval(&cpts[..(nu + 1)])
+        let sm_t = Smat::new(a, b, t, nu, spl.degree());
+        sm_t.seval(&cpts[nu - deg..])
     };
+    print!("bez:cpts\n");
+    for c in cpts.iter() {
+        for j in 0..T::T::dim()
+        {
+            print!("{:.5},",c.extract(j));
+        }
+        println!("_");
+    }
 
     // set up new knots
     let t = {
+        println!("tlen:{:?}{}", t, nu+deg+2);
         let mut ks = t[..(nu + deg + 2)].to_owned();
+        println!("ks:{:?}", ks);
         for j in 0..(deg + 1) {
             ks[nu + j + 1] = us[j];
         }
         ks
     };
-
+    println!("t:{:?}", t);
     // get cpts wrt bspline basis
-    let cpts = {
-        let sm_ks = Smat::new(a, b, t.as_slice(), spl.degree());
+    let cpts  = {
+        let nu = locate_nu(a, deg, &t);
+        let sm_ks = Smat::new(a, b, &t, nu, spl.degree());
         sm_ks.reval(cpts.as_slice())
     };
-    T::new(cpts, t)
+    println!("c:{}", cpts.len() );
+    if nu > deg {
+        let mut lcpts = spl.control_points()[0..nu - deg].to_owned();
+        lcpts.extend(cpts.into_iter());
+        println!("lc:{:?}", lcpts.len());
+        T::new(lcpts, t)
+    }else {
+        T::new(cpts,t)
+    }
 }
 
-pub fn clamp_at_right<T>(b: f64, spl: &T)
+pub fn clamp_at_right<T>(b: f64, spl: &T) -> T
     where T: SplineData
 {
-    rebase_at_right(spl, b, &vec![b; spl.degree() as usize + 1]);
+    rebase_at_right(spl, b, &vec![b; spl.degree() as usize + 1])
 }
 
-pub fn clamp_at_left<T>(b: f64, spl: &T)
+pub fn clamp_at_left<T>(b: f64, spl: &T) -> T
     where T: SplineData
 {
-    rebase_at_left(spl, b, &vec![b; spl.degree() as usize + 1]);
+    rebase_at_left(spl, b, &vec![b; spl.degree() as usize + 1])
 }
 
 #[test]
-fn it_works(){   
+fn it_works(){
     use bspline::{Bspline};
     use splinedata::{SplineData};
     use curve::Curve;

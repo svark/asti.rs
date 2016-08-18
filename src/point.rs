@@ -1,29 +1,64 @@
 #[cfg(target_feature = "sse2")]
 use simd::x86::sse2::f64x2;
 
-#[cfg(target_feature = "avx")]
-use simd::x86::avx::f64x4;
+// #[cfg(target_feature = "avx")]
+// use simd::x86::avx::f64x4;
 
-#[cfg(target_feature = "neon")]
-use simd::aarch64::neon::f64x2;
+// #[cfg(target_feature = "neon")]
+// use simd::aarch64::neon::f64x2;
+
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#[allow(non_camel_case_types)]
 #[cfg(all(not(target_feature = "sse2"), not(target_feature = "neon")))]
 #[derive(Debug, Copy, Clone)]
+#[allow(non_camel_case_types)]
 pub struct f64x2(f64, f64);
 
+//#[cfg(not(target_feature = "avx"))]
 #[allow(non_camel_case_types)]
-#[cfg(not(target_feature = "avx"))]
 #[derive(Debug, Copy, Clone)]
 pub struct f64x4(f64, f64, f64, f64);
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Copy, Clone)]
 pub struct f64x3(f64, f64, f64);
+
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#[cfg(not(target_feature = "avx"))]
+#[cfg(not(target_feature = "sse2"))]
+impl f64x2 {
+    pub fn new(x: f64, y: f64) -> f64x2 {
+        f64x2(x, y)
+    }
+
+    fn load(x: &[f64], i: usize) -> f64x2 {
+        f64x2(x[i], x[i + 1])
+    }
+
+    fn splat(x: f64) -> f64x2 {
+        f64x2(x, x)
+    }
+
+    fn extract(&self, i: u32) -> f64 {
+        match i {
+            0 => self.0,
+            1 => self.1,
+            _ => panic!("bad index for extract in f64x2"),
+        }
+    }
+
+    fn replace(&mut self, i: u32, x: f64) -> f64x2 {
+        match i {
+            0 => f64x2(x, self.1),
+            1 => f64x2(self.0, x),
+            _ => panic!("bad index for replace in f64x2"),
+        }
+    }
+}
+
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//#[cfg(not(target_feature = "avx"))]
 impl f64x4 {
     pub fn new(x: f64, y: f64, z: f64, w: f64) -> f64x4 {
         f64x4(x, y, z, w)
@@ -93,7 +128,7 @@ impl f64x3 {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 use std::ops::{Add, Sub, SubAssign, AddAssign, Mul};
 
-#[cfg(not(target_feature = "avx"))]
+// #[cfg(not(target_feature = "avx"))]
 impl Add for f64x4 {
     type Output = f64x4;
 
@@ -102,7 +137,7 @@ impl Add for f64x4 {
     }
 }
 
-#[cfg(not(target_feature = "avx"))]
+// #[cfg(not(target_feature = "avx"))]
 impl Sub for f64x4 {
     type Output = f64x4;
 
@@ -111,7 +146,7 @@ impl Sub for f64x4 {
     }
 }
 
-#[cfg(not(target_feature = "avx"))]
+// #[cfg(not(target_feature = "avx"))]
 impl Mul<f64x4> for f64x4 {
     type Output = f64x4;
 
@@ -120,7 +155,7 @@ impl Mul<f64x4> for f64x4 {
     }
 }
 
-#[cfg(not(target_feature = "avx"))]
+// #[cfg(not(target_feature = "avx"))]
 impl Mul<f64> for f64x4 {
     type Output = f64x4;
 
@@ -131,19 +166,75 @@ impl Mul<f64> for f64x4 {
 
 
 
-#[cfg(not(target_feature = "avx"))]
+// #[cfg(not(target_feature = "avx"))]
 impl AddAssign for f64x4 {
     fn add_assign(&mut self, p2: f64x4) {
         *self = *self + p2;
     }
 }
 
-#[cfg(not(target_feature = "avx"))]
+
+// #[cfg(not(target_feature = "avx"))]
 impl SubAssign for f64x4 {
     fn sub_assign(&mut self, p2: f64x4) {
         *self = *self - p2;
     }
 }
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+#[cfg(not(target_feature = "sse2"))]
+impl Add for f64x2 {
+    type Output = f64x2;
+
+    fn add(self, p2: f64x2) -> f64x2 {
+        f64x2(self.0 + p2.0, self.1 + p2.1)
+    }
+}
+
+#[cfg(not(target_feature = "sse2"))]
+impl Sub for f64x2 {
+    type Output = f64x2;
+
+    fn sub(self, p2: f64x2) -> f64x2 {
+        f64x2(self.0 - p2.0, self.1 - p2.1)
+    }
+}
+
+#[cfg(not(target_feature = "sse2"))]
+impl Mul<f64x2> for f64x2 {
+    type Output = f64x2;
+
+    fn mul(self, p2: f64x2) -> f64x2 {
+        f64x2(self.0 * p2.0, self.1 * p2.1)
+    }
+}
+
+#[cfg(not(target_feature = "sse2"))]
+impl Mul<f64> for f64x2 {
+    type Output = f64x2;
+
+    fn mul(self, p2: f64) -> f64x2 {
+        f64x2(self.0 * p2, self.1 * p2)
+    }
+}
+
+
+
+#[cfg(not(target_feature = "sse2"))]
+impl AddAssign for f64x2 {
+    fn add_assign(&mut self, p2: f64x2) {
+        *self = *self + p2;
+    }
+}
+
+
+#[cfg(not(target_feature = "sse2"))]
+impl SubAssign for f64x2 {
+    fn sub_assign(&mut self, p2: f64x2) {
+        *self = *self - p2;
+    }
+}
+
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 impl Add for f64x3 {
     type Output = f64x3;

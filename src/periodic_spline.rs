@@ -1,8 +1,9 @@
 use splinedata::{SplineData, KnotManip};
-use bspline::{Bspline, ClassInvariant, SplineWrapper};
+use bspline::{Bspline, SplineWrapper, SplineMut};
 use curve::Curve;
 use vectorspace::VectorSpace;
 use tol::Tol;
+use class_invariant::ClassInvariant;
 pub struct PeriodicBspline<Point: VectorSpace> {
     spl: Bspline<Point>,
 }
@@ -108,6 +109,12 @@ impl<Point: VectorSpace> ClassInvariant for PeriodicBspline<Point> {
         } else {
             Err("Periodicity violated")
         }
+    }
+}
+
+impl<P: VectorSpace> SplineMut for PeriodicBspline<P> {
+    fn into_spline(self) -> Bspline<Self::T> {
+        self.spl
     }
 }
 

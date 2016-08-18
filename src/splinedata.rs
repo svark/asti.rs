@@ -9,6 +9,7 @@ pub trait SplineData
     fn new(cpts: Vec<Self::T>, ts : Vec<f64>) -> Self;
 }
 
+
 pub trait KnotManip
 {
     fn start_mult(&self) -> usize;
@@ -21,3 +22,5 @@ pub trait KnotManip
     fn insert_knot(&self, tau: f64) -> Self;
     fn insert_knots(&self, taus: &Vec<f64>) ->Self;
 }
+
+

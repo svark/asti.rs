@@ -1,16 +1,19 @@
 use vectorspace::VectorSpace;
-use bspline::{Bspline, SplineWrapper, ClassInvariant};
+use bspline::{Bspline, SplineWrapper, SplineMut};
 use periodic_spline::PeriodicBspline;
 use curve::Curve;
+use class_invariant::ClassInvariant;
 
-pub struct RationalBspline<Point> where Point:VectorSpace
+pub struct RationalBspline<Point>
+    where Point: VectorSpace
 {
-    spl  : Bspline<Point::H>,
+    spl: Bspline<Point::H>,
 }
 
-pub struct PeriodicRationalBspline<Point> where Point:VectorSpace
+pub struct PeriodicRationalBspline<Point>
+    where Point: VectorSpace
 {
-    spl  : PeriodicBspline<Point::H>,
+    spl: PeriodicBspline<Point::H>,
 }
 
 
@@ -24,7 +27,7 @@ pub trait RationalTrait: SplineWrapper
         let der_order = vecs.len();
         let mut bbasis: Vec<f64> = vec![0.0;der_order];
         let dim = Self::TW::dim() - 1;
-        let mut ws: Vec<f64> =  Vec::with_capacity(der_order+1);
+        let mut ws: Vec<f64> = Vec::with_capacity(der_order + 1);
         for i in 0..der_order {
             for j in (1..i).rev() {
                 bbasis[j] += bbasis[j - 1];
@@ -47,39 +50,33 @@ pub trait RationalTrait: SplineWrapper
 }
 
 
-impl<Point> SplineWrapper for RationalBspline<Point> where Point:VectorSpace
+impl<Point> SplineWrapper for RationalBspline<Point>
+    where Point: VectorSpace
 {
     type TW = Point::H;
-    fn to_spline(&self) -> &Bspline<Self::TW>
-    {
+    fn to_spline(&self) -> &Bspline<Self::TW> {
         &self.spl
     }
-    fn from_spline(spl: Bspline<Self::TW> ) -> Self
-    {
-        RationalBspline{ spl: spl }
+    fn from_spline(spl: Bspline<Self::TW>) -> Self {
+        RationalBspline { spl: spl }
     }
 }
 
-impl<Point> SplineWrapper for PeriodicRationalBspline<Point> where Point:VectorSpace
+impl<Point> SplineWrapper for PeriodicRationalBspline<Point>
+    where Point: VectorSpace
 {
     type TW = Point::H;
-    fn to_spline(&self) -> &Bspline<Self::TW>
-    {
+    fn to_spline(&self) -> &Bspline<Self::TW> {
         self.spl.to_spline()
     }
-    fn from_spline(spl: Bspline<Self::TW> ) -> Self
-    {
-        PeriodicRationalBspline{ spl: PeriodicBspline::from_spline(spl) }
+    fn from_spline(spl: Bspline<Self::TW>) -> Self {
+        PeriodicRationalBspline { spl: PeriodicBspline::from_spline(spl) }
     }
 }
 
-impl<Point:VectorSpace> RationalTrait for RationalBspline<Point>
-{
-}
+impl<Point: VectorSpace> RationalTrait for RationalBspline<Point> {}
 
-impl<Point:VectorSpace> RationalTrait for PeriodicRationalBspline<Point>
-{
-}
+impl<Point: VectorSpace> RationalTrait for PeriodicRationalBspline<Point> {}
 
 
 impl<P> ClassInvariant for RationalBspline<P>
@@ -90,8 +87,7 @@ impl<P> ClassInvariant for RationalBspline<P>
     }
 }
 
-impl<SplineType:RationalTrait> Curve for SplineType
-{
+impl<SplineType: RationalTrait> Curve for SplineType {
     type T = <<Self as SplineWrapper>::TW as VectorSpace>::L;
     fn param_range(&self) -> (f64, f64) {
         self.to_spline().param_range()
@@ -111,10 +107,24 @@ impl<SplineType:RationalTrait> Curve for SplineType
     }
 }
 
+impl<P: VectorSpace> SplineMut for RationalBspline<P> {
+    fn into_spline(self) -> Bspline<Self::T> {
+        self.spl
+    }
+}
+
+impl<P: VectorSpace> SplineMut for PeriodicRationalBspline<P> {
+    fn into_spline(self) -> Bspline<Self::T> {
+        self.spl.into_spline()
+    }
+}
+
+
+
 #[test]
 fn it_works() {
     use point::{Point2, Point1};
-    use splinedata::{SplineData};
+    use splinedata::SplineData;
     let v: Vec<Point2> = vec![Point2::new(1.0, 1.0), Point2::new(2.0, 1.0), Point2::new(1.0, 1.0)];
     type RsP1 = RationalBspline<Point1>;
     let rs = RsP1::new(v, vec![0., 0., 0., 1., 1., 1.]);

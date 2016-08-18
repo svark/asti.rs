@@ -1,9 +1,11 @@
-use tol::Tol;
+use tol::{Tol, PARAMRES};
 use vectorspace::VectorSpace;
 use util::merge;
 use splinedata::{SplineData, KnotManip};
 use curve::{Curve, BlossomCurve};
 use rmat::{eval, locate_nu};
+use class_invariant::ClassInvariant;
+use std::fmt;
 
 pub struct Bspline<Point: VectorSpace> {
     control_points: Vec<Point>,
@@ -36,24 +38,52 @@ impl<P> SplineData for Bspline<P>
     }
 }
 
+impl<P> fmt::Display for Bspline<P>
+    where P: VectorSpace
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(writeln!(f, "cpts:"));
+        for &c in self.control_points() {
+            try!(write!(f, "("));
+            for j in 0..P::dim() {
+                try!(write!(f, "{:?},", c.extract(j)));
+            }
+            try!(writeln!(f, ")"));
+        }
+        try!(write!(f, "["));
+        for t in self.knots() {
+            try!(write!(f, "{}", t));
+        }
+        write!(f, "{}", self.degree())
+    }
+}
+
 pub trait SplineWrapper
 {
     type TW:VectorSpace;
     fn to_spline(&self) -> &Bspline<Self::TW>;
-    fn from_spline(spl: Bspline<Self::TW> ) -> Self;
+    fn from_spline(spl: Bspline<Self::TW>) -> Self;
 }
 
 
-impl <SplType> KnotManip for SplType where SplType:SplineData
+impl<SplType> KnotManip for SplType
+    where SplType: SplineData
 {
     fn start_mult(&self) -> usize {
         let f = self.front();
-        self.knots().iter().take_while(|&x| (*x - f).small_param()).count()
+        self.knots()
+            .iter()
+            .take_while(|&x| (*x - f).small_param())
+            .count()
     }
 
     fn end_mult(&self) -> usize {
         let l = self.back();
-        self.knots().iter().rev().take_while(|&x| (*x - l).small_param()).count()
+        self.knots()
+            .iter()
+            .rev()
+            .take_while(|&x| (*x - l).small_param())
+            .count()
     }
 
     fn front(&self) -> f64 {
@@ -71,20 +101,28 @@ impl <SplType> KnotManip for SplType where SplType:SplineData
     fn mult(&self, u: f64) -> usize {
         let f = self.front();
         let b = self.back();
-        if (u - b).small() { self.end_mult()}
-        else if ( u - f).small() { self.start_mult() }
-        else if u > b { 0 }
-        else if u < f { 0 }
-        else {
+        if (u - b).small() {
+            self.end_mult()
+        } else if (u - f).small() {
+            self.start_mult()
+        } else if u > b {
+            0
+        } else if u < f {
+            0
+        } else {
             let nu = self.locate_nu(u);
-            self.knots()[..nu + 1].iter().rev().take_while(|&x| (*x - u).small_param()).count()
+            self.knots()[..nu + 1]
+                .iter()
+                .rev()
+                .take_while(|&x| (*x - u).small_param())
+                .count()
         }
     }
 
     fn rebase(&self, taus: Vec<f64>) -> Self {
         let d = self.degree() as usize;
         let ncpts = taus.len() - d - 1;
-        let mut cpts: Vec< <Self as SplineData>::T> = Vec::with_capacity(ncpts);
+        let mut cpts: Vec<<Self as SplineData>::T> = Vec::with_capacity(ncpts);
         for i in 0..ncpts {
             cpts.push(self.blossom_eval(0, &taus[i..]));
         }
@@ -105,7 +143,8 @@ impl <SplType> KnotManip for SplType where SplType:SplineData
     }
 }
 
-impl<SplType> BlossomCurve for SplType where SplType : SplineData
+impl<SplType> BlossomCurve for SplType
+    where SplType: SplineData
 {
     type T = <Self as SplineData>::T;
     fn blossom_eval(&self, der_order: u32, us: &[f64]) -> Self::T {
@@ -121,19 +160,15 @@ impl<SplType> BlossomCurve for SplType where SplType : SplineData
     }
 }
 
-pub trait ClassInvariant
-{
-    fn is_valid(&self) -> Result<bool, &str>;
-}
 
-impl<P:VectorSpace> ClassInvariant for Bspline<P>
-{
+impl<P: VectorSpace> ClassInvariant for Bspline<P> {
     fn is_valid(&self) -> Result<bool, &str> {
-        if self.knots().len() != self.control_points().len() + self.degree() as usize + 1 {
+        let d = self.degree() as usize;
+        let cptslen = self.control_points().len();
+        if self.knots().len() != cptslen + d + 1 {
             return Err("bad degree");
         }
         if self.degree() < 1 {
-
             return Err("zero degree");
         }
 
@@ -144,7 +179,7 @@ impl<P:VectorSpace> ClassInvariant for Bspline<P>
         let t = self.knots();
         for j in 1..t.len() {
             let i = j - 1;
-            if t[i] > t[j] {
+            if t[i] > t[j] + PARAMRES / 2.0 {
                 return Err("knots not sorted");
             }
         }
@@ -166,10 +201,7 @@ impl<P:VectorSpace> ClassInvariant for Bspline<P>
 }
 
 
-struct Bezier<P:VectorSpace> { spl: Bspline<P> }
-
-impl<SplType:SplineWrapper> SplineData for SplType
-{
+impl<SplType: SplineWrapper> SplineData for SplType {
     type T = <Self as SplineWrapper>::TW;
     fn control_points(&self) -> &Vec<Self::T> {
         self.to_spline().control_points()
@@ -189,37 +221,6 @@ impl<SplType:SplineWrapper> SplineData for SplType
     }
 }
 
-impl<P:VectorSpace> ClassInvariant for Bezier<P>
-{
-    fn is_valid(&self) -> Result<bool, &str> {
-        try!(self.spl.is_valid());
-        let sz = self.spl.degree() as usize + 1;
-        let t = self.spl.knots();
-        if  t.len() != 2*sz || self.spl.control_points().len() != sz
-        {
-            return Err("Bezier knots are invalid");
-        }
-        if  t[0..sz].iter().all( |x| (x-t[0]).small() )
-        {
-            if  t[t.len()-1-sz..].iter().all( |x| (x-t[t.len()-1]).small() )
-            {
-                return Ok(true)
-            }
-        }
-        Err("Bezier knots are invalid")
-    }
-
-}
-impl<P:VectorSpace> SplineWrapper for Bezier<P>
-{
-    type TW = P;
-    fn to_spline(&self) -> &Bspline<Self::TW> { &self.spl }
-    fn from_spline(spl: Bspline<P>) -> Self {
-        let bz = Bezier{ spl: spl };
-        assert!(bz.is_valid().is_ok());
-        bz
-    }
-}
 
 impl<P> Curve for Bspline<P>
     where P: VectorSpace
@@ -240,6 +241,18 @@ impl<P> Curve for Bspline<P>
     fn eval_derivative(&self, u: f64, order: u32) -> P {
         let d = self.deg as usize;
         self.blossom_eval(order, &vec![u;d+1])
+    }
+}
+
+pub trait SplineMut: SplineData
+{
+    fn into_spline(self) -> Bspline<Self::T>;
+}
+
+
+impl<P: VectorSpace> SplineMut for Bspline<P> {
+    fn into_spline(self) -> Bspline<Self::T> {
+        self
     }
 }
 

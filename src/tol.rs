@@ -33,10 +33,11 @@ impl Tol for f64 {
     }
 }
 
-pub struct Param(f64);
+pub struct Param(pub f64);
 
 pub fn wrap_param(v: f64) -> Param { return Param(v); }
 pub fn unwrap_param(s: Param) -> f64 { let Param(v) = s; v }
+pub fn unwrap_param_ref(s: &Param) -> f64 { let &Param(v) = s; v }
 
 impl PartialEq for Param
 {
