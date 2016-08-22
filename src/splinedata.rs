@@ -24,3 +24,11 @@ pub trait KnotManip
 }
 
 
+pub fn  greville<SplineType>(spl : &SplineType, k : usize ) -> f64
+    where SplineType:SplineData
+{
+    let d = spl.degree() as usize;
+    let mut  sum = 0.0;
+    sum = spl.knots()[k+1..k+d+1].iter().fold(sum, |s,x| { s + x });
+    sum/(d as f64)
+}

@@ -17,6 +17,8 @@ pub mod periodic_spline;
 pub mod rational_bspline;
 pub mod bezier;
 pub mod smat;
+pub mod monomial_form;
+pub mod rootfinder;
 #[test]
 fn it_works() {
 

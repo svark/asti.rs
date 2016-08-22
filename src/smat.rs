@@ -129,37 +129,23 @@ pub fn rebase_at_right<T>(spl: &T, b: f64, us: &[f64]) -> T
         let sm_t = Smat::new(a, b, t, nu, spl.degree());
         sm_t.seval(&cpts[nu - deg..])
     };
-    print!("bez:cpts\n");
-    for c in cpts.iter() {
-        for j in 0..T::T::dim()
-        {
-            print!("{:.5},",c.extract(j));
-        }
-        println!("_");
-    }
-
     // set up new knots
     let t = {
-        println!("tlen:{:?}{}", t, nu+deg+2);
         let mut ks = t[..(nu + deg + 2)].to_owned();
-        println!("ks:{:?}", ks);
         for j in 0..(deg + 1) {
             ks[nu + j + 1] = us[j];
         }
         ks
     };
-    println!("t:{:?}", t);
     // get cpts wrt bspline basis
     let cpts  = {
         let nu = locate_nu(a, deg, &t);
         let sm_ks = Smat::new(a, b, &t, nu, spl.degree());
         sm_ks.reval(cpts.as_slice())
     };
-    println!("c:{}", cpts.len() );
     if nu > deg {
         let mut lcpts = spl.control_points()[0..nu - deg].to_owned();
         lcpts.extend(cpts.into_iter());
-        println!("lc:{:?}", lcpts.len());
         T::new(lcpts, t)
     }else {
         T::new(cpts,t)

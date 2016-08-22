@@ -7,6 +7,7 @@ use rmat::{eval, locate_nu};
 use class_invariant::ClassInvariant;
 use std::fmt;
 
+#[derive(Clone,Debug)]
 pub struct Bspline<Point: VectorSpace> {
     control_points: Vec<Point>,
     knots: Vec<f64>,

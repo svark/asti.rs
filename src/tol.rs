@@ -33,6 +33,7 @@ impl Tol for f64 {
     }
 }
 
+#[derive(Debug,Clone,Copy)]
 pub struct Param(pub f64);
 
 pub fn wrap_param(v: f64) -> Param { return Param(v); }

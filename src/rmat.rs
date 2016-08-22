@@ -117,9 +117,7 @@ pub fn locate_nu(u: f64, d: usize, t: &[f64]) -> usize {
     if u >= t[ncpts] {
         u = t[ncpts] - PARAMRES / 2.0;
     }
-    println!("look for:{:?} in {:?}" , u, t);
     let idx = upper_bound(t, u) - 1;
-    println!("check id:{} in range [{},{})", idx, d, ncpts);
     assert!(idx >= d && idx < ncpts);
     idx
 }
