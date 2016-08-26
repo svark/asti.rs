@@ -7,7 +7,6 @@ use simd::x86::sse2::f64x2;
 // #[cfg(target_feature = "neon")]
 // use simd::aarch64::neon::f64x2;
 
-
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #[cfg(all(not(target_feature = "sse2"), not(target_feature = "neon")))]
@@ -581,6 +580,30 @@ impl VectorSpace for Point3 {
     }
 }
 
+pub fn is_coplanar(p1:&Point3, p2:&Point3, p3:&Point3, p4:&Point3, tol: f64) -> bool
+{
+    let pa = (*p1+*p2+*p3+*p4)*0.25;
+    let p1 = *p1 - pa;
+    let p2 = *p2 - pa;
+    let p3 = *p3 - pa;
+    let p4 = *p4 - pa;
+    let (x1,y1,z1) = (p1.extract(0),p1.extract(1), p1.extract(2) );
+    let (x2,y2,z2) = (p2.extract(0),p2.extract(1), p2.extract(2) );
+    let (x3,y3,z3) = (p3.extract(0),p3.extract(1), p3.extract(2) );
+    let (x4,y4,z4) = (p4.extract(0),p4.extract(1), p4.extract(2) );
+
+    let det = y4*(z3*(x2-x1)+z2*(x1-x3))+y3*(z4*(x1-x2)-x1*z2)+z4*(x3*y2-x1*y2)+x1*y2*z3+z1*(y4*(x3-x2)+x2*y3-x3*y2+x4*(y2-y3))+y1*(z4*(x2-x3)-x2*z3)+x3*y1*z2+x4*(-y1*z2+y1*z3-y2*z3+y3*z2);
+
+    det.abs() < tol
+}
+
+pub fn  is_collinear<P:VectorSpace>(p1: &P, p2: &P, p3: &P, tol: f64) -> bool
+{
+    let p12 = *p1 - *p2;
+    let p23 = *p2 - *p3;
+    p12.dot(&p23).abs() - p12.len() * p23.len() < tol*tol
+}
+
 impl VectorSpace for Point4 {
     fn dim() -> u32 {
         4
@@ -613,7 +636,6 @@ impl VectorSpace for Point4 {
         u.extract(0) + u.extract(1) + u.extract(2) + u.extract(3)
     }
 }
-
 
 
 #[test]

@@ -4,7 +4,7 @@ use class_invariant::ClassInvariant;
 use vectorspace::VectorSpace;
 use tol::Param;
 use itertools::Itertools;
-use curve::Curve;
+use curve::{Curve, FiniteCurve};
 use smat::Smat;
 pub struct Bezier<P: VectorSpace> {
     spl: Bspline<P>,
@@ -50,9 +50,6 @@ impl<P: VectorSpace> SplineMut for Bezier<P> {
 
 impl<P: VectorSpace> Curve for Bezier<P> {
     type T = P;
-    fn param_range(&self) -> (f64, f64) {
-        self.to_spline().param_range()
-    }
 
     fn eval(&self, v: f64) -> Self::T {
         self.to_spline().eval(v)
@@ -63,6 +60,11 @@ impl<P: VectorSpace> Curve for Bezier<P> {
     }
 }
 
+impl<P:VectorSpace> FiniteCurve for Bezier<P> {
+    fn param_range(&self) -> (f64, f64) {
+        self.to_spline().param_range()
+    }
+}
 
 
 pub fn split_into_bezier_patches<SplineType>(spl: &SplineType) -> Vec<Bezier<SplineType::T>>

@@ -1,0 +1,247 @@
+use tol::Tol;
+use tol::RESABS;
+use rational_bspline::{RationalBspline, rational_derivatives_from_derivatives};
+use vectorspace::VectorSpace;
+use curve::{Curve, FiniteCurve};
+use std::f64::consts::PI;
+use errcodes::GeomErrorCode;
+use errcodes::GeomErrorCode::*;
+use line::Line;
+use point::{is_collinear, is_coplanar, Point2, Point3, Point4};
+use angle::{Angle, perp_in_plane};
+use bspline::{Bspline, SplineWrapper};
+use splinedata::SplineData;
+pub struct ConicArc<P: VectorSpace> {
+    p: [P::H; 3],
+}
+
+pub enum ConicType {
+    Ellipse,
+    Hyperbola,
+    Parabola,
+}
+
+impl<P: VectorSpace> ConicArc<P> {
+    pub fn with_weights(p: &[P], w: &[f64]) -> Self {
+        let pws = [p[0].hdim(1.0)*w[0], p[1].hdim(1.0)*w[1], p[2].hdim(1.0)*w[2]];
+        ConicArc { p: pws }
+    }
+
+    pub fn new(p1: P::H, p2: P::H, p3: P::H) -> Self {
+        ConicArc { p: [p1, p2, p3] }
+    }
+
+    pub fn weight(&self, i: usize) -> f64 {
+        self.p[i].extract(P::dim())
+    }
+
+    fn make_conic_arc_non_parallel(p: [P; 3], v: [P; 2]) -> Result<ConicArc<P>, GeomErrorCode> {
+        let cpts = Line::new(&p[0], &v[0]).closest_points(&Line::new(&p[2], &v[1]));
+        assert!((cpts.0 - cpts.1).len().small());
+        let s = p[1]; // shoulder point;
+        let cpsq = Line::new_joining(&p[0], &p[2]).closest_points(&Line::new_joining(&cpts.0, &s));
+        let q = cpsq.0;
+        if !(q - cpsq.1).len().small() {
+            return Err(DegenerateOrSmallConic);
+        }
+        let a = (q - p[0]).len() / (q - p[2]).len();
+        let u = a / (a + 1.0);
+
+        let p1 = cpts.0;
+        let mut w = (1.0 - u) * (1.0 - u) * (s - p[0]).dot(&(p1 - s)) +
+                    u * u * (s - p[2]).dot(&(p1 - s));
+        w /= 2.0 * u * (1.0 - u) * (p1 - p[1]).lensq();
+
+        let cpts = [p[0], p1, p[2]];
+        let weights = [1.0, w, 1.0];
+        Ok(ConicArc::with_weights(&cpts, &weights))
+    }
+
+    fn make_conic_arc_parallel(p: [P; 3], v: P) -> Result<ConicArc<P>, GeomErrorCode> {
+        let s = p[1]; // shoulder point
+        let cpsq = Line::new_joining(&p[0], &p[2]).closest_points(&Line::new(&s, &v));
+        let q = cpsq.0;
+        if !(q - cpsq.1).len().small() {
+            return Err(DegenerateOrSmallConic);
+        }
+
+        let a = (q - p[0]).len() / (q - p[2]).len();
+        let u = a / (1.0 + a);
+        let b = ((1.0 - u) * (1.0 - u) + u * u) / (2.0 * u * (1.0 - u));
+        let p1 = (s - q) * b;
+        let w = ((1.0 - u) * (1.0 - u) * (s - p[0]).dot(&(p1 - s)) + (s - p[2]).dot(&(p1 - s))) /
+                (2.0 * u * (1.0 - u) * (p1 - p[1]).lensq());
+        let cpts = [p[0], p1, p[2]];
+        let weights = [1.0, w, 1.0];
+        Ok(ConicArc::with_weights(&cpts, &weights))
+    }
+
+    fn conic_arc_preconditions(p: [Point3; 3], v: [Point3; 2]) -> Result<(), GeomErrorCode> {
+        if v[0].len().small() || v[1].len().small() {
+            Err(TangentVectorsTooSmall)
+        } else if is_collinear(&p[0], &p[1], &p[2], RESABS) {
+            Err(DegenerateOrSmallConic)
+        } else if !is_coplanar(&p[0], &p[1], &p[2], &(p[0] + v[0]), RESABS) {
+            Err(VectorsNotInPlaneOfPoints)
+        } else if !is_coplanar(&p[0], &p[1], &p[2], &(p[2] + v[1]), RESABS) {
+            Err(VectorsNotInPlaneOfPoints)
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn typ(&self) -> ConicType {
+        let w = self.weight(1).abs();
+        if (w - 1.).small() {
+            ConicType::Parabola
+        } else if w < 1. {
+            ConicType::Ellipse
+        } else {
+            ConicType::Hyperbola
+        }
+    }
+
+    pub fn split_conic_at_shoulder(&self) -> (P::H, P::H, P::H) {
+        let w = self.weight(1);
+        assert!((self.weight(0)-1.).abs().small());
+        assert!((self.weight(2)-1.).abs().small());
+        let mut q1 = self.p[0].lerp(0.5, self.p[1]);
+        let mut r1 = self.p[2].lerp(0.5, self.p[1]);
+        // 7.42, pg 314 in the NURBS book
+        let s = q1.lerp(0.5, r1).proj().unwrap();
+        let w1 = ((1.0 + w) / 2.0).sqrt();
+        q1 = q1 * (w1 / q1.extract(P::dim()));
+        r1 = r1 * (w1 / r1.extract(P::dim()));
+        (q1, s, r1)
+    }
+}
+
+impl<P: VectorSpace> Curve for ConicArc<P> {
+    type T = <P::H as VectorSpace>::L;
+    fn eval(&self, u: f64) -> Self::T {
+        self.eval_derivative(u, 0)
+    }
+
+    fn eval_derivative(&self, u: f64, der_order: u32) -> Self::T {
+        let mut ders: Vec<P::H> = Vec::with_capacity(der_order as usize + 1);
+        for i in 0..der_order + 1 {
+            let der = match i {
+                0 => {
+                    let p01 = self.p[0].lerp(1. - u, self.p[1]);
+                    let p12 = self.p[1].lerp(1. - u, self.p[2]);
+                    p01.lerp(1. - u, p12)
+                }
+                1 => {
+                    let p01 = self.p[0].lerp(1. - u, self.p[1]);
+                    let p12 = self.p[1].lerp(1. - u, self.p[2]);
+                    let p01d = self.p[1] - self.p[0];
+                    let p12d = self.p[2] - self.p[1];
+                    (p12 - p01) + p01d.lerp(1. - u, p12d)
+                }
+                2 => {
+                    let p01d = self.p[1] - self.p[0];
+                    let p12d = self.p[2] - self.p[1];
+                    p12d - p01d
+                }
+                _ => P::H::default(),
+            };
+            ders.push(der);
+        }
+        *rational_derivatives_from_derivatives(&ders).last().unwrap()
+    }
+}
+
+impl<P: VectorSpace> FiniteCurve for ConicArc<P> {
+    fn param_range(&self) -> (f64, f64) {
+        (0.0, 1.0)
+    }
+}
+
+pub fn make_conic_arc(p: [Point3; 3], v: [Point3; 2]) -> Result<ConicArc<Point3>, GeomErrorCode> {
+    type ConicArc3 = ConicArc<Point3>;
+    try!(ConicArc3::conic_arc_preconditions(p, v));
+    if (v[0].dot(&v[1]).abs() - v[0].len() * v[1].len()).small() {
+        ConicArc::make_conic_arc_parallel(p, v[0])
+    } else {
+        ConicArc::make_conic_arc_non_parallel(p, v)
+    }
+}
+
+pub fn make_conic_arc_planar(p: [Point2; 3],
+                             v: [Point2; 2])
+                             -> Result<ConicArc<Point2>, GeomErrorCode> {
+    if (v[0].dot(&v[1]).abs() - v[0].len() * v[1].len()).small() {
+        ConicArc::make_conic_arc_parallel(p, v[0])
+    } else {
+        ConicArc::make_conic_arc_non_parallel(p, v)
+    }
+}
+
+pub fn make_circular_arc(p: [Point3; 3]) -> Result<ConicArc<Point3>, GeomErrorCode> {
+    let p10 = p[0] - p[1];
+    let p12 = p[2] - p[1];
+    let p02 = p[2] - p[0];
+
+    if let (Some(angle), Some(w)) = (p10.angle(&p12), p02.normalize()) {
+        if let Some(mut v) = perp_in_plane(w, p) {
+            let theta = PI - angle;
+            if (p[1] - p[0]).dot(&v) < 0.0 {
+                v = v * (-1.0);
+            }
+            let tgts = [v * theta.sin() + w * theta.sin(), v * (-theta.sin()) + w * theta.cos()];
+            make_conic_arc(p, tgts)
+        } else {
+            Err(DegenerateCircle)
+        }
+    } else {
+        Err(DegenerateCircle)
+    }
+}
+
+pub fn make_rbspline_from_conic(arc: &ConicArc<Point3>)
+                                -> Result<RationalBspline<Point3>, GeomErrorCode> {
+    let w = arc.weight(1);
+    type PointW = Point4;
+    type ConicArc3 = ConicArc<Point3>;
+    type RationalBspline3 = RationalBspline<Point3>;
+    let dim = 3;
+    if w < -1.0 {
+        let ref mut rev = arc.p[1].clone();
+        let nv = -arc.p[1].extract(dim);
+        rev.replace(dim, nv);
+        let cra = ConicArc3::new(arc.p[2].clone(), *rev, arc.p[0].clone());
+        return make_rbspline_from_conic(&cra);
+    }
+
+    let projpts = [arc.p[0].ldim(), arc.p[1].ldim(), arc.p[2].ldim()];
+
+    if let Some(alpha) = (projpts[1] - projpts[0]).angle(&(projpts[2] - projpts[1])) {
+        if w >= 1.0 || (w > 0.0 && alpha > PI / 3.0) {
+            // single segment parabola or hyperbola
+            let ks = vec![0., 0., 0., 1., 1., 1.];
+            let cpts = vec![arc.p[0].clone(), arc.p[1].clone(), arc.p[2].clone()];
+            let spl = Bspline::new(cpts, ks);
+            Ok(RationalBspline3::from_spline(spl))
+        } else if w < 0.0 && alpha > PI / 2.0 {
+            let ks = vec![0., 0., 0., 0.25, 0.25, 0.5, 0.5, 0.75, 0.75, 1., 1., 1.];
+
+            let (q0, s0, r0) = arc.split_conic_at_shoulder();
+
+            let c1arc = ConicArc3::new(arc.p[0], q0, s0);
+            let c2arc = ConicArc3::new(s0, r0, arc.p[2]);
+            let (q1, s1, r1) = c1arc.split_conic_at_shoulder();
+            let (q2, s2, r2) = c2arc.split_conic_at_shoulder();
+            let cpts = vec![arc.p[0], q1, s1, r1, s0, q2, s2, r2, arc.p[2]];
+            let spl = Bspline::new(cpts, ks);
+            Ok(RationalBspline::from_spline(spl))
+        } else {
+            let (q, s, r) = arc.split_conic_at_shoulder();
+            let ks = vec![0., 0., 0., 0.5, 0.5, 1., 1., 1.];
+            let cpts = vec![arc.p[0], q, s, r, arc.p[2]];
+            let spl = Bspline::new(cpts, ks);
+            Ok(RationalBspline::from_spline(spl))
+        }
+    } else {
+        Err(DegenerateOrSmallConic)
+    }
+}

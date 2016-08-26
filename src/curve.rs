@@ -2,9 +2,13 @@ use vectorspace::VectorSpace;
 pub trait Curve
 {
     type T:VectorSpace;
-    fn param_range(&self)->(f64,f64);
     fn eval(&self,v:f64) -> Self::T;
     fn eval_derivative(&self, v:f64,order:u32) -> Self::T;
+}
+
+pub trait FiniteCurve: Curve
+{
+    fn param_range(&self)->(f64,f64);
 }
 
 pub trait BlossomCurve

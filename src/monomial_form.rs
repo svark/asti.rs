@@ -1,4 +1,4 @@
-use curve::Curve;
+use curve::{Curve,FiniteCurve};
 use vectorspace::VectorSpace;
 pub struct  MonomialForm<P: VectorSpace>
 {
@@ -18,7 +18,6 @@ impl<P:VectorSpace> MonomialForm<P>
 impl<P:VectorSpace> Curve for MonomialForm<P>
 {
     type T = P;
-    fn param_range(&self) -> (f64,f64) {(self.s,self.e) }
     fn eval(&self,u : f64) -> P {
         let mut v : P = Default::default();
         let mut ui = 1.0;
@@ -48,6 +47,11 @@ impl<P:VectorSpace> Curve for MonomialForm<P>
         }
         v
     }
+}
+
+impl<P:VectorSpace> FiniteCurve for MonomialForm<P>
+{
+    fn param_range(&self) -> (f64,f64) {(self.s,self.e) }
 }
 
 #[test]

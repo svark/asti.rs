@@ -1,6 +1,6 @@
 use splinedata::{SplineData, KnotManip};
 use bspline::{Bspline, SplineWrapper, SplineMut};
-use curve::Curve;
+use curve::{Curve,FiniteCurve};
 use vectorspace::VectorSpace;
 use tol::Tol;
 use class_invariant::ClassInvariant;
@@ -74,9 +74,6 @@ fn periodic_param(rng: (f64, f64), u: f64) -> f64 {
 
 impl<Point: VectorSpace> Curve for PeriodicBspline<Point> {
     type T = Point;
-    fn param_range(&self) -> (f64, f64) {
-        return self.spl.param_range();
-    }
     fn eval(&self, u: f64) -> Point {
         let v = periodic_param(self.param_range(), u);
         self.spl.eval(v)
@@ -87,6 +84,12 @@ impl<Point: VectorSpace> Curve for PeriodicBspline<Point> {
     }
 }
 
+impl <P:VectorSpace> FiniteCurve for PeriodicBspline<P>
+{
+    fn param_range(&self) -> (f64, f64) {
+        return self.spl.param_range();
+    }
+}
 
 impl<Point: VectorSpace> ClassInvariant for PeriodicBspline<Point> {
     fn is_valid(&self) -> Result<bool, &str> {

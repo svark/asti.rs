@@ -2,10 +2,11 @@ use tol::{Tol, PARAMRES};
 use vectorspace::VectorSpace;
 use util::merge;
 use splinedata::{SplineData, KnotManip};
-use curve::{Curve, BlossomCurve};
+use curve::{Curve, FiniteCurve, BlossomCurve};
 use rmat::{eval, locate_nu};
 use class_invariant::ClassInvariant;
 use std::fmt;
+//use std::convert::From;
 
 #[derive(Clone,Debug)]
 pub struct Bspline<Point: VectorSpace> {
@@ -66,6 +67,14 @@ pub trait SplineWrapper
     fn from_spline(spl: Bspline<Self::TW>) -> Self;
 }
 
+
+macro_rules! TW {
+    () =>  {<Self as SplineWrapper>::TW}
+}
+
+macro_rules! TWL {
+    () =>  {<< Self as SplineWrapper>::TW as VectorSpace>::L}
+}
 
 impl<SplType> KnotManip for SplType
     where SplType: SplineData
@@ -167,7 +176,7 @@ impl<P: VectorSpace> ClassInvariant for Bspline<P> {
         let d = self.degree() as usize;
         let cptslen = self.control_points().len();
         if self.knots().len() != cptslen + d + 1 {
-            return Err("bad degree");
+            return Err("degree != #knots - #cpts - 1 ");
         }
         if self.degree() < 1 {
             return Err("zero degree");
@@ -227,12 +236,6 @@ impl<P> Curve for Bspline<P>
     where P: VectorSpace
 {
     type T = P;
-    fn param_range(&self) -> (f64, f64) {
-        let t = &self.knots;
-        let d = self.deg as usize;
-        let ncpts = t.len() - d - 1;
-        (t[d], t[ncpts])
-    }
 
     fn eval(&self, u: f64) -> P {
         let d = self.deg as usize;
@@ -245,6 +248,16 @@ impl<P> Curve for Bspline<P>
     }
 }
 
+impl<P:VectorSpace> FiniteCurve for Bspline<P>
+{
+    fn param_range(&self) -> (f64, f64) {
+        let t = &self.knots;
+        let d = self.deg as usize;
+        let ncpts = t.len() - d - 1;
+        (t[d], t[ncpts])
+    }
+
+}
 pub trait SplineMut: SplineData
 {
     fn into_spline(self) -> Bspline<Self::T>;

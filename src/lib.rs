@@ -1,24 +1,29 @@
 #![feature(cfg_target_feature)]
+#![feature(type_macros)]
 #[cfg(target_feature = "sse2")]
 extern crate simd;
 
 extern crate itertools;
 
+pub mod errcodes;
 pub mod point;
 pub mod tol;
 pub mod util;
 pub mod vectorspace;
+pub mod angle;
 pub mod rmat;
 pub mod splinedata;
 pub mod curve;
 pub mod class_invariant;
-pub mod bspline;
+#[macro_use] pub mod bspline;
 pub mod periodic_spline;
 pub mod rational_bspline;
 pub mod bezier;
 pub mod smat;
 pub mod monomial_form;
+pub mod line;
 pub mod rootfinder;
+pub mod conic;
 #[test]
 fn it_works() {
 

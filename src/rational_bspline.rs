@@ -1,7 +1,7 @@
 use vectorspace::VectorSpace;
 use bspline::{Bspline, SplineWrapper, SplineMut};
 use periodic_spline::PeriodicBspline;
-use curve::Curve;
+use curve::{Curve, FiniteCurve};
 use class_invariant::ClassInvariant;
 
 pub struct RationalBspline<Point>
@@ -17,35 +17,36 @@ pub struct PeriodicRationalBspline<Point>
 }
 
 
+// inputs are of form v,v',v"..v^(n) (ie all derivatives upto n-th)
+// returns w^(n)
+pub fn rational_derivatives_from_derivatives<T:VectorSpace>(vecs: &Vec<T> ) -> Vec<T::L>
+{
+    let mut vs: Vec<T::L> = Vec::with_capacity(vecs.len());
+    let der_order = vecs.len();
+    let mut bbasis: Vec<f64> = vec![0.0;der_order];
+    let dim = T::dim() - 1;
+    let mut ws: Vec<f64> = Vec::with_capacity(der_order + 1);
+    for i in 0..der_order {
+        for j in (1..i).rev() {
+            bbasis[j] += bbasis[j - 1];
+        }
+        bbasis[i] = 1.0;
+        let mut v = vecs[i].ldim();
+        let w = vecs[i].extract(dim);
+        ws.push(w);
+        for j in 1..i + 1 {
+            let mut u = vs[i - j];
+            u = u * bbasis[j] * ws[j];
+            v = v - u
+        }
+        v = v * (1.0 / vecs[0].extract(dim));
+        vs.push(v);
+    }
+    vs
+}
+
 pub trait RationalTrait: SplineWrapper
 {
-    // inputs are of form v,v',v"..v^(n) (ie all derivatives upto n-th)
-    // returns w^(n)
-    fn rational_derivatives_from_derivatives(vecs: &Vec< <Self as SplineWrapper>::TW>) -> Vec<<<Self as SplineWrapper>::TW as VectorSpace>::L>
-    {
-        let mut vs: Vec<<<Self as SplineWrapper>::TW as VectorSpace>::L> = Vec::with_capacity(vecs.len());
-        let der_order = vecs.len();
-        let mut bbasis: Vec<f64> = vec![0.0;der_order];
-        let dim = Self::TW::dim() - 1;
-        let mut ws: Vec<f64> = Vec::with_capacity(der_order + 1);
-        for i in 0..der_order {
-            for j in (1..i).rev() {
-                bbasis[j] += bbasis[j - 1];
-            }
-            bbasis[i] = 1.0;
-            let mut v = vecs[i].ldim();
-            let w = vecs[i].extract(dim);
-            ws.push(w);
-            for j in 1..i + 1 {
-                let mut u = vs[i - j];
-                u = u * bbasis[j] * ws[j];
-                v = v - u
-            }
-            v = v * (1.0 / vecs[0].extract(dim));
-            vs.push(v);
-        }
-        vs
-    }
 
 }
 
@@ -88,10 +89,7 @@ impl<P> ClassInvariant for RationalBspline<P>
 }
 
 impl<SplineType: RationalTrait> Curve for SplineType {
-    type T = <<Self as SplineWrapper>::TW as VectorSpace>::L;
-    fn param_range(&self) -> (f64, f64) {
-        self.to_spline().param_range()
-    }
+    type T = TWL!();
 
     fn eval(&self, v: f64) -> Self::T {
         let pw = self.to_spline().eval(v);
@@ -99,11 +97,17 @@ impl<SplineType: RationalTrait> Curve for SplineType {
     }
 
     fn eval_derivative(&self, v: f64, order: u32) -> Self::T {
-        let mut vecs: Vec<<Self as SplineWrapper>::TW> = Vec::with_capacity(order as usize + 1);
+        let mut vecs: Vec<TW!()> = Vec::with_capacity(order as usize + 1);
         for i in 0..order + 1 {
             vecs.push(self.to_spline().eval_derivative(v, i))
         }
-        *SplineType::rational_derivatives_from_derivatives(&vecs).last().unwrap()
+        *rational_derivatives_from_derivatives(&vecs).last().unwrap()
+    }
+}
+
+impl <SplineType: RationalTrait> FiniteCurve for SplineType {
+    fn param_range(&self) -> (f64, f64) {
+        self.to_spline().param_range()
     }
 }
 
@@ -118,6 +122,7 @@ impl<P: VectorSpace> SplineMut for PeriodicRationalBspline<P> {
         self.spl.into_spline()
     }
 }
+
 
 
 
