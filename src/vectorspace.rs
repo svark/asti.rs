@@ -2,7 +2,8 @@ use std::ops::{Add, Sub, Mul};
 use std::marker::Copy;
 use std::clone::Clone;
 use tol::Tol;
-pub trait VectorSpace : Mul<f64, Output = Self> + Copy + Add<Self, Output=Self> + Sub<Self, Output=Self> + Default + Clone
+use std::fmt::Debug;
+pub trait VectorSpace : Mul<f64, Output = Self> + Copy + Add<Self, Output=Self> + Sub<Self, Output=Self> + Default + Clone + Debug
 {
     fn lerp(&self, l: f64, q: Self) -> Self {
         let p = *self;

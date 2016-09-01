@@ -2,7 +2,7 @@ use vectorspace::VectorSpace;
 use rmat::{locate_nu, sdiv};
 use splinedata::SplineData;
 use tol::PARAMRES;
-
+use bspline::{Bspline, SplineWrapper};
 pub struct Smat<'a> {
     a: f64,
     b: f64,
@@ -76,8 +76,8 @@ impl<'a> Smat<'a> {
 }
 
 
-pub fn rebase_at_left<T>(spl: &T, a: f64, us: &[f64]) -> T
-    where T: SplineData
+pub fn rebase_at_left<SplT>(spl: &SplT, a: f64, us: &[f64]) -> SplT
+    where SplT:  SplineWrapper
 {
     let t = spl.knots();
     let deg = spl.degree() as usize;
@@ -110,11 +110,11 @@ pub fn rebase_at_left<T>(spl: &T, a: f64, us: &[f64]) -> T
     if nu + 1 < spl.control_points().len() {
         cpts.extend(spl.control_points()[nu+1..].to_owned());
     }
-    T::new(cpts, t)
+    SplT::from_spline(Bspline::new(cpts, t))
 }
 
 pub fn rebase_at_right<T>(spl: &T, b: f64, us: &[f64]) -> T
-    where T: SplineData
+    where T:  SplineWrapper
 {
     let t = spl.knots();
     let deg = spl.degree() as usize;
@@ -146,20 +146,20 @@ pub fn rebase_at_right<T>(spl: &T, b: f64, us: &[f64]) -> T
     if nu > deg {
         let mut lcpts = spl.control_points()[0..nu - deg].to_owned();
         lcpts.extend(cpts.into_iter());
-        T::new(lcpts, t)
+        T::from_spline(Bspline::new(lcpts, t))
     }else {
-        T::new(cpts,t)
+        T::from_spline(Bspline::new(cpts, t))
     }
 }
 
 pub fn clamp_at_right<T>(b: f64, spl: &T) -> T
-    where T: SplineData
+    where T: SplineWrapper
 {
     rebase_at_right(spl, b, &vec![b; spl.degree() as usize + 1])
 }
 
 pub fn clamp_at_left<T>(b: f64, spl: &T) -> T
-    where T: SplineData
+    where T: SplineWrapper
 {
     rebase_at_left(spl, b, &vec![b; spl.degree() as usize + 1])
 }

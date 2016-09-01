@@ -6,6 +6,8 @@ use tol::Param;
 use itertools::Itertools;
 use curve::{Curve, FiniteCurve};
 use smat::Smat;
+
+#[derive(Debug)]
 pub struct Bezier<P: VectorSpace> {
     spl: Bspline<P>,
 }
@@ -68,7 +70,7 @@ impl<P:VectorSpace> FiniteCurve for Bezier<P> {
 
 
 pub fn split_into_bezier_patches<SplineType>(spl: &SplineType) -> Vec<Bezier<SplineType::T>>
-    where SplineType: SplineData + SplineMut
+    where SplineType: SplineWrapper + SplineMut
 {
     let t = spl.knots();
     let tlen = spl.knots().len();
@@ -90,7 +92,7 @@ pub fn split_into_bezier_patches<SplineType>(spl: &SplineType) -> Vec<Bezier<Spl
             let bzcpts = sm.seval(&cpts[nu - d..]);
             let mut ks = vec![a;d+1];
             ks.extend(vec![b;d+1]);
-            patches.push(Bezier::new(bzcpts, ks));
+            patches.push(Bezier::from_spline(Bspline::new(bzcpts, ks) ));
         }
     }
     patches

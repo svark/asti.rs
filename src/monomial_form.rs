@@ -1,5 +1,7 @@
 use curve::{Curve,FiniteCurve};
 use vectorspace::VectorSpace;
+
+#[derive(Debug)]
 pub struct  MonomialForm<P: VectorSpace>
 {
     pts: Vec<P>,
@@ -13,6 +15,17 @@ impl<P:VectorSpace> MonomialForm<P>
     {
         MonomialForm{ pts: pts, s:s , e:e }
     }
+    pub fn len(&self) -> usize {
+        self.pts.len()
+    }
+    pub fn points(&self) -> &Vec<P> {
+        &self.pts
+    }
+    
+    pub fn point(&self, i : usize) -> P {
+        self.pts[i]
+    }
+
 }
 
 impl<P:VectorSpace> Curve for MonomialForm<P>

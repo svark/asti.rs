@@ -24,6 +24,8 @@ pub mod monomial_form;
 pub mod line;
 pub mod rootfinder;
 pub mod conic;
+pub mod legendre_form;
+
 #[test]
 fn it_works() {
 

@@ -16,30 +16,6 @@ pub struct Bspline<Point: VectorSpace> {
 }
 
 
-impl<P> SplineData for Bspline<P>
-    where P: VectorSpace
-{
-    type T = P;
-    fn control_points(&self) -> &Vec<P> {
-        &self.control_points
-    }
-    fn knots(&self) -> &Vec<f64> {
-        &self.knots
-    }
-    fn degree(&self) -> u32 {
-        self.deg
-    }
-
-    fn new(cpts: Vec<P>, ks: Vec<f64>) -> Bspline<P> {
-        let d = ks.len() - cpts.len() - 1;
-        Bspline {
-            control_points: cpts,
-            knots: ks,
-            deg: d as u32,
-        }
-    }
-}
-
 impl<P> fmt::Display for Bspline<P>
     where P: VectorSpace
 {
@@ -67,6 +43,12 @@ pub trait SplineWrapper
     fn from_spline(spl: Bspline<Self::TW>) -> Self;
 }
 
+impl<P:VectorSpace> SplineWrapper for Bspline<P>
+{
+    type TW = P;
+    fn to_spline(&self) -> &Bspline<P> { self }
+    fn from_spline(spl: Bspline<Self::TW>) -> Self { spl }
+}
 
 macro_rules! TW {
     () =>  {<Self as SplineWrapper>::TW}
@@ -77,7 +59,7 @@ macro_rules! TWL {
 }
 
 impl<SplType> KnotManip for SplType
-    where SplType: SplineData
+    where SplType: SplineWrapper
 {
     fn start_mult(&self) -> usize {
         let f = self.front();
@@ -136,7 +118,7 @@ impl<SplType> KnotManip for SplType
         for i in 0..ncpts {
             cpts.push(self.blossom_eval(0, &taus[i..]));
         }
-        Self::new(cpts, taus)
+        Self::from_spline(Bspline::new(cpts, taus))
     }
 
     fn insert_knot(&self, tau: f64) -> Self {
@@ -214,20 +196,15 @@ impl<P: VectorSpace> ClassInvariant for Bspline<P> {
 impl<SplType: SplineWrapper> SplineData for SplType {
     type T = <Self as SplineWrapper>::TW;
     fn control_points(&self) -> &Vec<Self::T> {
-        self.to_spline().control_points()
+        &self.to_spline().control_points
     }
 
     fn knots(&self) -> &Vec<f64> {
-        self.to_spline().knots()
+        &self.to_spline().knots
     }
 
     fn degree(&self) -> u32 {
-        self.to_spline().degree()
-    }
-
-    fn new(control_points: Vec<Self::T>, knots: Vec<f64>) -> Self {
-        let spl = Bspline::new(control_points, knots);
-        SplType::from_spline(spl)
+        self.to_spline().deg
     }
 }
 
@@ -271,6 +248,18 @@ impl<P: VectorSpace> SplineMut for Bspline<P> {
 }
 
 
+impl<P:VectorSpace> Bspline<P>
+{
+    pub fn new(cpts: Vec<P>, ks: Vec<f64>) -> Bspline<P> {
+        let d = ks.len() - cpts.len() - 1;
+        Bspline {
+            control_points: cpts,
+            knots: ks,
+            deg: d as u32,
+        }
+    }
+
+}
 #[test]
 fn it_works() {
     let bs = Bspline {

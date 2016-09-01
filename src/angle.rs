@@ -20,7 +20,7 @@ pub trait Angle : VectorSpace
 impl Angle for Point3{}
 impl Angle for Point2{}
 
-pub fn cross(v1: Point3, v2: Point3) -> Point3
+pub fn cross(v1: &Point3, v2: &Point3) -> Point3
 {
     let v3 = Point3::new(
         (v1.extract(1)*v2.extract(2) - v1.extract(2)*v2.extract(1)),
@@ -31,14 +31,16 @@ pub fn cross(v1: Point3, v2: Point3) -> Point3
 
 pub fn plane_normal(p : [Point3;3]) -> Option<Point3>
 {
-    cross( p[1] - p[0], p[2] - p[0] ).normalize()
+    let ref p10 = p[1] - p[0];
+    let ref p20 = p[2] - p[0];
+    cross( p10, p20 ).normalize()
 }
 
 pub fn perp_in_plane(v1: Point3, p: [Point3;3]) -> Option<Point3>
 {
     if let Some(v) = plane_normal(p)
     {
-        Some(cross(v1, v))
+        Some(cross(&v1, &v))
     }else
     {
         None

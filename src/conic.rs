@@ -7,10 +7,9 @@ use std::f64::consts::PI;
 use errcodes::GeomErrorCode;
 use errcodes::GeomErrorCode::*;
 use line::Line;
-use point::{is_collinear, is_coplanar, Point2, Point3, Point4};
+use point::{is_collinear, is_coplanar, Point2, Point3};
 use angle::{Angle, perp_in_plane};
 use bspline::{Bspline, SplineWrapper};
-use splinedata::SplineData;
 pub struct ConicArc<P: VectorSpace> {
     p: [P::H; 3],
 }
@@ -23,7 +22,7 @@ pub enum ConicType {
 
 impl<P: VectorSpace> ConicArc<P> {
     pub fn with_weights(p: &[P], w: &[f64]) -> Self {
-        let pws = [p[0].hdim(1.0)*w[0], p[1].hdim(1.0)*w[1], p[2].hdim(1.0)*w[2]];
+        let pws = [p[0].hdim(1.0) * w[0], p[1].hdim(1.0) * w[1], p[2].hdim(1.0) * w[2]];
         ConicArc { p: pws }
     }
 
@@ -36,18 +35,14 @@ impl<P: VectorSpace> ConicArc<P> {
     }
 
     fn make_conic_arc_non_parallel(p: [P; 3], v: [P; 2]) -> Result<ConicArc<P>, GeomErrorCode> {
-        let cpts = Line::new(&p[0], &v[0]).closest_points(&Line::new(&p[2], &v[1]));
-        assert!((cpts.0 - cpts.1).len().small());
+        let cpt = Line::new(&p[0], &v[0]).intersect_with_line(&Line::new(&p[2], &v[1]));
         let s = p[1]; // shoulder point;
-        let cpsq = Line::new_joining(&p[0], &p[2]).closest_points(&Line::new_joining(&cpts.0, &s));
-        let q = cpsq.0;
-        if !(q - cpsq.1).len().small() {
-            return Err(DegenerateOrSmallConic);
-        }
+        let q = Line::new_joining(&p[0], &p[2]).intersect_with_line(&Line::new_joining(&cpt, &s));
+
         let a = (q - p[0]).len() / (q - p[2]).len();
         let u = a / (a + 1.0);
 
-        let p1 = cpts.0;
+        let p1 = cpt;
         let mut w = (1.0 - u) * (1.0 - u) * (s - p[0]).dot(&(p1 - s)) +
                     u * u * (s - p[2]).dot(&(p1 - s));
         w /= 2.0 * u * (1.0 - u) * (p1 - p[1]).lensq();
@@ -59,12 +54,7 @@ impl<P: VectorSpace> ConicArc<P> {
 
     fn make_conic_arc_parallel(p: [P; 3], v: P) -> Result<ConicArc<P>, GeomErrorCode> {
         let s = p[1]; // shoulder point
-        let cpsq = Line::new_joining(&p[0], &p[2]).closest_points(&Line::new(&s, &v));
-        let q = cpsq.0;
-        if !(q - cpsq.1).len().small() {
-            return Err(DegenerateOrSmallConic);
-        }
-
+        let q = Line::new_joining(&p[0], &p[2]).intersect_with_line(&Line::new(&s, &v));
         let a = (q - p[0]).len() / (q - p[2]).len();
         let u = a / (1.0 + a);
         let b = ((1.0 - u) * (1.0 - u) + u * u) / (2.0 * u * (1.0 - u));
@@ -103,8 +93,8 @@ impl<P: VectorSpace> ConicArc<P> {
 
     pub fn split_conic_at_shoulder(&self) -> (P::H, P::H, P::H) {
         let w = self.weight(1);
-        assert!((self.weight(0)-1.).abs().small());
-        assert!((self.weight(2)-1.).abs().small());
+        assert!((self.weight(0) - 1.).abs().small());
+        assert!((self.weight(2) - 1.).abs().small());
         let mut q1 = self.p[0].lerp(0.5, self.p[1]);
         let mut r1 = self.p[2].lerp(0.5, self.p[1]);
         // 7.42, pg 314 in the NURBS book
@@ -127,16 +117,16 @@ impl<P: VectorSpace> Curve for ConicArc<P> {
         for i in 0..der_order + 1 {
             let der = match i {
                 0 => {
-                    let p01 = self.p[0].lerp(1. - u, self.p[1]);
-                    let p12 = self.p[1].lerp(1. - u, self.p[2]);
-                    p01.lerp(1. - u, p12)
+                    let p01 = self.p[0].lerp(u, self.p[1]);
+                    let p12 = self.p[1].lerp(u, self.p[2]);
+                    p01.lerp(u, p12)
                 }
                 1 => {
-                    let p01 = self.p[0].lerp(1. - u, self.p[1]);
-                    let p12 = self.p[1].lerp(1. - u, self.p[2]);
+                    let p01 = self.p[0].lerp(u, self.p[1]);
+                    let p12 = self.p[1].lerp(u, self.p[2]);
                     let p01d = self.p[1] - self.p[0];
                     let p12d = self.p[2] - self.p[1];
-                    (p12 - p01) + p01d.lerp(1. - u, p12d)
+                    (p12 - p01) + p01d.lerp(u, p12d)
                 }
                 2 => {
                     let p01d = self.p[1] - self.p[0];
@@ -201,7 +191,6 @@ pub fn make_circular_arc(p: [Point3; 3]) -> Result<ConicArc<Point3>, GeomErrorCo
 pub fn make_rbspline_from_conic(arc: &ConicArc<Point3>)
                                 -> Result<RationalBspline<Point3>, GeomErrorCode> {
     let w = arc.weight(1);
-    type PointW = Point4;
     type ConicArc3 = ConicArc<Point3>;
     type RationalBspline3 = RationalBspline<Point3>;
     let dim = 3;
@@ -243,5 +232,25 @@ pub fn make_rbspline_from_conic(arc: &ConicArc<Point3>)
         }
     } else {
         Err(DegenerateOrSmallConic)
+    }
+}
+
+#[test]
+fn it_works() {
+    // test ellipse
+    {
+        let pts = [Point2::new(0.0, 0.0), Point2::new(0.4, 0.3), Point2::new(1.0, 0.0)];
+        let vs = [Point2::new(0., 1.), Point2::new(0.4, 0.5)];
+
+        if let Ok(arc) = make_conic_arc_planar(pts, vs) {
+            let p0 = arc.eval(0.);
+            assert!((p0 - pts[0]).len().small());
+            let p1 = arc.eval(1.0);
+            assert!((p1 - pts[2]).len().small());
+            let p05 = arc.eval(0.5);
+            assert!((p05 - Point2::new(0.691566265, 0.478915663)).len().small());
+        } else {
+            assert!(false);
+        }
     }
 }

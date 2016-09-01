@@ -22,11 +22,11 @@ pub struct PeriodicRationalBspline<Point>
 pub fn rational_derivatives_from_derivatives<T:VectorSpace>(vecs: &Vec<T> ) -> Vec<T::L>
 {
     let mut vs: Vec<T::L> = Vec::with_capacity(vecs.len());
-    let der_order = vecs.len();
-    let mut bbasis: Vec<f64> = vec![0.0;der_order];
+    let der_order_1 = vecs.len();
+    let mut bbasis: Vec<f64> = vec![0.0;der_order_1];
     let dim = T::dim() - 1;
-    let mut ws: Vec<f64> = Vec::with_capacity(der_order + 1);
-    for i in 0..der_order {
+    let mut ws: Vec<f64> = Vec::with_capacity(der_order_1 + 1);
+    for i in 0..der_order_1 {
         for j in (1..i).rev() {
             bbasis[j] += bbasis[j - 1];
         }
@@ -129,10 +129,8 @@ impl<P: VectorSpace> SplineMut for PeriodicRationalBspline<P> {
 #[test]
 fn it_works() {
     use point::{Point2, Point1};
-    use splinedata::SplineData;
     let v: Vec<Point2> = vec![Point2::new(1.0, 1.0), Point2::new(2.0, 1.0), Point2::new(1.0, 1.0)];
-    type RsP1 = RationalBspline<Point1>;
-    let rs = RsP1::new(v, vec![0., 0., 0., 1., 1., 1.]);
+    let rs = RationalBspline::<Point1>::from_spline(Bspline::new(v, vec![0., 0., 0., 1., 1., 1.]));
 
     let bs = Bspline::new(vec![1.0, 2.0, 1.0], vec![0., 0.0, 0.0, 1., 1., 1.]);
     assert_eq!(rs.eval(0.0), bs.eval(1.0));
