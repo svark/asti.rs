@@ -12,6 +12,15 @@ pub struct Bezier<P: VectorSpace> {
     spl: Bspline<P>,
 }
 
+impl<P:VectorSpace> Bezier<P>
+{
+    pub fn new(cpts: Vec<P>, s : f64, e: f64) -> Bezier<P>
+    {
+        let mut knots = vec![s;cpts.len()];
+        knots.extend(vec![e;cpts.len()]);
+        Bezier{spl : Bspline::new(cpts,knots)}
+    }
+}
 
 impl<P: VectorSpace> ClassInvariant for Bezier<P> {
     fn is_valid(&self) -> Result<bool, &str> {

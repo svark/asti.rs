@@ -15,6 +15,14 @@ impl<P:VectorSpace> LegendreForm<P>
     {
         LegendreForm{a:a, s:s, e:e}
     }
+    
+    pub fn coeffs(&self) -> &Vec<P> {
+        &self.a
+    }
+    
+    pub fn len(&self) -> usize {
+        self.a.len()
+    }
 }
 
 impl <P:VectorSpace> Curve for LegendreForm<P>

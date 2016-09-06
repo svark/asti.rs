@@ -1,4 +1,5 @@
-use monomial_form::MonomialForm
+use monomial_form::MonomialForm;
+use change_basis::{to_bezier, to_monomial};
 fn find_param_2d(p: &Point2, mf: MonomialForm<Point3>) -> Option<f64>
 {
     let coeffs = Vec::with_capacity(mf.len());

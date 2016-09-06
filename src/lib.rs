@@ -1,5 +1,4 @@
 #![feature(cfg_target_feature)]
-#![feature(type_macros)]
 #[cfg(target_feature = "sse2")]
 extern crate simd;
 
@@ -25,7 +24,7 @@ pub mod line;
 pub mod rootfinder;
 pub mod conic;
 pub mod legendre_form;
-
+pub mod change_basis;
 #[test]
 fn it_works() {
 
