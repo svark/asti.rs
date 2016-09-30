@@ -1,21 +1,92 @@
-use monomial_form::MonomialForm;
-use change_basis::{to_bezier, to_monomial};
-fn find_param_2d(p: &Point2, mf: MonomialForm<Point3>) -> Option<f64>
+use bezier::Bezier;
+use combinations::ncks;
+use vectorspace::VectorSpace;
+use point::{Point2,Point3};
+use la::{Matrix,SVD};
+use splinedata::SplineData;
+
+// applications to cagd, thomas sederberg (book: cox,sturmfels,manocha, applns to computational algebraic geometry)
+pub fn find_param_2d(p: &Point2, bf: &Bezier<Point3>) -> Option<f64>
 {
-    let coeffs = Vec::with_capacity(mf.len());
-    let a = |i: usize| { mf[i][0]};
-    let b = |i: usize| { mf[i][1]};
-    let c = |i: usize| { mf[i][2]};
-
-    let l0j = Vec::with_capacity(mf.len());
-    for m = 1..mf.size()
-    {
-        let j = m - 1;
-
-        l0j.push( p[0] * (b(m) * c(0) - c(m) * b(0) ) + 
-                 p[1] * ( a(0)* c(m) - c(0)*a(m)) + 
-                 p[2] * ( a(m) * b(0) - b(m)*a(0)) );
+    let n = bf.degree() as usize;
+    let x = |i:usize| { bf.control_points()[i].extract(0) };
+    let y = |i:usize| { bf.control_points()[i].extract(1) };
+    let w = |i:usize| { bf.control_points()[i].extract(2) };
+    
+    let mut l = vec![0.0;(n+1)*(n+1)];
+    let (a,b) = (p.extract(0),p.extract(1));
+    
+    let cn = ncks(n);
+    for i in 0..(n+1) {
+        let cni = cn[i];
+        let (xi,yi,wi) = (x(i),y(i),w(i));
+        for j in 0..i {
+             let (xj,yj,wj) = (x(j),y(j),w(j));
+             let cnj  = cn[j];
+             let detx = a * (yi - yj) - b*(xi - xj) + (xi * yj - xj *yi) ;
+             l[i*(n+1)+j] = ((cni * cnj) as f64)* wi * wj *  detx;
+             l[j*(n+1)+i] = -l[i*(n+1)+j];
+        }
     }
-   let bzf = to_bezier(mf);
-   Some(0.0)
+
+    let mut bigl = vec![0.0;n*n];
+    for i in 0..n {
+        for j in i..n {
+            let mut biglij = 0.0;
+            for k in 0..(i+1) {
+                let m = i + j + 1 - k;
+                if m <= n {
+                   biglij += l[k*(n+1)+m];
+                }
+            }
+            bigl[i*n+j] = biglij;
+            bigl[j*n+i] = biglij;
+        }
+    }
+
+    let m = Matrix::new(n,n, bigl);
+
+    let svd = SVD::new(&m);
+    let (sigma,v)= (svd.get_s(), svd.get_v());
+    if sigma.get(n-1,n-1) > 1e-6 {
+        return None
+    }
+    let mut t = 0.0;
+    let mut rs = 0.0;
+    for j in 0..n {
+        rs += v.get(j,n-1);
+    }
+    let rsnf = (n as f64) * rs;
+    for j in 0..n {
+        t += v.get(j,n-1) * (j as f64)/rsnf;
+    }
+    return Some(t);
+}
+
+#[test]
+pub fn it_works()
+{
+    use tol::Tol;
+    use bspline::{Bspline};
+    use bezier::split_into_bezier_patches;
+    use curve::Curve;
+    let spl = Bspline::new(vec![Point3::new(0.,0.,1.0),Point3::new(0.0,0.5,1.0), 
+                        Point3::new(0.5,0.5,1.0), Point3::new(0.5,0.,1.0)],
+                    vec![0.,0.,0.,0.5,1.,1.,1.]);
+    let pt_01 = spl.eval(0.1);
+    println!("{:?}", pt_01);
+    assert!(pt_01.extract(0) > 0.0);
+    let p = Point2::new(pt_01.extract(0), pt_01.extract(1));
+    let mut found_t = false;
+    for bp  in split_into_bezier_patches(&spl).iter()
+    {
+        let q = bp.eval(0.1) ;
+        assert!( (pt_01-q).len().small() );
+        if let Some(t) = find_param_2d(&p, &bp) {
+            assert!((t - 0.1).small());
+            found_t = true;
+        }
+        break;
+    } 
+    assert!(found_t);
 }
