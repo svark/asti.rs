@@ -142,20 +142,18 @@ impl <P:VectorSpace> LineSeg<P>
 
     pub fn closest_point(&self, p:& P) -> P
     {
-        let candidates = [
+        let (c,d) = (
             self.eval(self.a),
-            self.eval(self.b),
-            self.l.closest_point(p) ];
-        let mut mindist = (*p - candidates[0]).len();
-        let mut c = candidates[0];
-        for j in 1..3 {
-            let pc = (*p - candidates[j]).len();
-            if pc < mindist {
-                mindist = pc;
-                c = candidates[j];
-            }
-        }
-        return c;
-    }
+            self.eval(self.b)
+        );
+        let cp = self.l.closest_point(p);
+        let proj_in_seg = (cp - c).dot(cp - d) > 0;
+        if  proj_in_seg 
+             return cp;
 
+        if (*p - d).len() < (*p - c).len() {
+             d
+        }else {
+             c   
+        }
 }
