@@ -6,3 +6,4 @@ authors = [" <arun.sivaramakrishnan@gmail.com>"]
 [dependencies]
 simd = { git = "https://github.com/huonw/simd" }
 itertools = { git = "https://github.com/bluss/rust-itertools" }
+la= "0.2.0"
