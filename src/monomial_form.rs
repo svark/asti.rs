@@ -35,15 +35,14 @@ impl<P: PointT> Curve for MonomialForm<P> {
         let mut ui = 1.0;
         let u = (u - self.s) / (self.e - self.s);
         for i in 0..self.pts.len() {
-            v += self.pts[i] * ui - P::zero_pt();
+            v += (self.pts[i] * ui).to_vector();
             ui = ui * u;
         }
         v
     }
 
     fn eval_derivative(&self, u: f64, der_order: u32) -> P {
-        let zp = P::zero_pt();
-        let mut v: P = zp.clone();
+        let mut v: P = P::zero_pt();
         let mut ui = 1.0;
         let u = (u - self.s) / (self.e - self.s);
         let mut f = 1 as usize;
@@ -52,7 +51,7 @@ impl<P: PointT> Curve for MonomialForm<P> {
         }
         let mut p = 1;
         for i in der_order as usize..self.pts.len() {
-            v += self.pts[i] * (f as f64 * ui) - zp;
+            v += (self.pts[i] * f as f64 * ui).to_vector();
             ui *= u;
             f *= i + 1;
             f /= p;

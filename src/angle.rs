@@ -1,8 +1,9 @@
-use vectorspace::{VectorT, Ops};
 use point::{Pt3, Vec2, Vec3};
-use nalgebra::{RotationTo, Cross, Norm};
+use nalgebra::{RotationTo, Cross, Norm, FloatVector};
 use tol::{Tol, RESABS};
-pub trait Angle : VectorT + RotationTo
+use vectorspace::Ops;
+
+pub trait Angle : FloatVector<f64> + RotationTo
 {
     fn angle(&self, other: &Self) -> <Self as RotationTo>::AngleType {
         self.angle_to(other)

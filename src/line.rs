@@ -1,10 +1,10 @@
 use tol::{Tol, RESABS};
-use vectorspace::PointT;
+use vectorspace::{PointT, to_pt};
 use curve::{Curve, FiniteCurve};
 use std::f64::INFINITY;
 use std::f64;
 use nalgebra::{Cross, PointAsVector, Norm, Dot};
-use std::ops::{Mul, Sub};
+use std::ops::{Mul, Sub, Add};
 use point::Pt3;
 pub struct Line<P: PointT> {
     start: P,
@@ -12,11 +12,11 @@ pub struct Line<P: PointT> {
 }
 
 impl<P: PointT> Line<P> {
-    fn start_pt(&self) -> P {
-        self.start
+    fn start_pt(&self) -> &P {
+        &self.start
     }
     fn direction(&self) -> <P as PointAsVector>::Vector {
-        self.dir - P::zero_pt()
+        self.dir.to_vector()
     }
 }
 
@@ -27,10 +27,14 @@ pub struct LineSeg<P: PointT> {
 }
 
 
-impl<P: PointT> Curve for LineSeg<P> {
+impl<P: PointT> Curve for LineSeg<P>
+    where <P as PointAsVector>::Vector: Mul<f64,Output=<P as PointAsVector>::Vector >
+{
     type T = P;
     fn eval(&self, u: f64) -> P {
-        self.l.start_pt() + (self.l.dir * u - P::zero_pt())
+        let &sp = self.l.start_pt();
+        let d = self.l.direction();
+        sp + d*u
     }
 
     fn eval_derivative(&self, u: f64, der_order: u32) -> P {
@@ -42,7 +46,9 @@ impl<P: PointT> Curve for LineSeg<P> {
     }
 }
 
-impl<P: PointT> FiniteCurve for LineSeg<P> {
+impl<P: PointT> FiniteCurve for LineSeg<P>
+   where <P as PointAsVector>::Vector: Mul<f64,Output=<P as PointAsVector>::Vector >
+{
     fn param_range(&self) -> (f64, f64) {
         (self.a, self.b)
     }
@@ -52,12 +58,12 @@ impl<Point: PointT> Line<Point> {
     pub fn new(p1: &Point, dir_as_pt: &Point) -> Option<Line<Point>>
         where <Point as PointAsVector>::Vector: Norm<NormType = f64>
     {
-        let dir = *dir_as_pt - Point::zero_pt();
+        let dir = (*dir_as_pt).to_vector();
         debug_assert!(!dir.norm().small());
         if let Some(nrml) = dir.try_normalize(RESABS) {
             Some(Line {
                 start: *p1,
-                dir: Point::zero_pt() + nrml,
+                dir: to_pt(nrml),
             })
         } else {
             None
@@ -65,9 +71,10 @@ impl<Point: PointT> Line<Point> {
     }
 
     pub fn new_joining(p1: &Point, p2: &Point) -> Option<Line<Point>>
-        where <Point as PointAsVector>::Vector: Norm<NormType = f64>
+        where <Point as PointAsVector>::Vector: Norm<NormType = f64>,
+              Point: Add<<Point as PointAsVector>::Vector>
     {
-        let dir = Point::zero_pt() + (*p2 - *p1);
+        let dir = to_pt(*p2 - *p1);
         Self::new(p1, &dir)
     }
 
@@ -76,8 +83,9 @@ impl<Point: PointT> Line<Point> {
        where <Point as PointAsVector>::Vector:Dot<f64> + Mul<f64,Output=<Point as PointAsVector>::Vector >
     {
         let l = self;
-        let f = (*p - l.start_pt()).dot(&l.direction());
-        let p1 = l.start_pt() + (self.direction() * f);
+        let d = l.direction();
+        let f = (*p - l.start).dot(&d);
+        let p1 = l.start + d * f;
         return p1;
     }
 
@@ -88,7 +96,7 @@ impl<Point: PointT> Line<Point> {
         let l1 = self;
         let d1 = l1.direction();
         let d2 = l2.direction();
-        let r = l1.start_pt() - l2.start_pt();
+        let r = l1.start - l2.start;
 
         let b = d1.dot(&d2);
         let f = d2.dot(&r);
@@ -99,7 +107,7 @@ impl<Point: PointT> Line<Point> {
             Point::splat(INFINITY)
         } else {
             let f = d1.dot(&(d2 * f - r)) / d;
-            let xpt = l1.start_pt() + d1 * f;
+            let xpt = l1.start + d1 * f;
             xpt
         }
     }
@@ -109,8 +117,8 @@ pub fn closest_points(l1: &Line<Pt3>, l2: &Line<Pt3>) -> (Pt3, Pt3) {
     let u = l1.direction();// these are unit dirs
     let v = l2.direction();
 
-    let a = l1.start_pt();
-    let c = l2.start_pt();
+    let &a = l1.start_pt();
+    let &c = l2.start_pt();
     let r = c - a;
     let p = u.cross(&v);
     let plen = p.norm();
@@ -144,9 +152,10 @@ pub fn closest_points(l1: &Line<Pt3>, l2: &Line<Pt3>) -> (Pt3, Pt3) {
 
 impl<P: PointT> LineSeg<P> {
     pub fn new_joining(p1: &P, p2: &P) -> Option<LineSeg<P>>
-        where <P as PointAsVector>::Vector: Norm<NormType = f64>
+        where <P as PointAsVector>::Vector: Norm<NormType = f64>,
+              P: Add<<P as PointAsVector>::Vector>
     {
-        let dir = P::zero_pt() + (*p2 - *p1);
+        let dir = to_pt(*p2 - *p1);
         if let Some(l) = Line::new(p1, &dir) {
             Some(Self::new(l, 0.0, 1.0))
         } else {

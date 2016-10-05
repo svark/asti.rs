@@ -71,7 +71,7 @@ impl<P: PointT> Curve for LegendreForm<P> {
                                .collect(); // account for remapped domain using chain rule
         }
         for (i, (&a, &c)) in self.a.iter().zip(coeffs.iter()).enumerate() {
-            v = v + (a * c * ((2 * i + 1) as f64).sqrt() - P::zero_pt()); // sqrt(2i+1) makes legendre polynomials orthonormal
+            v = v + (a * c * ((2 * i + 1) as f64).sqrt()).to_vector(); // sqrt(2i+1) makes legendre polynomials orthonormal
         }
         v
     }

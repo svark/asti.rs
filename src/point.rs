@@ -11,9 +11,15 @@ pub type Vec3 = Vector3<f64>;
 pub type Vec4 = Vector4<f64>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-use vectorspace::{PointT, VectorT, Ops};
+use vectorspace::{PointT, Ops};
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+impl Ops for Vec1 {}
+impl Ops for Vec2 {}
+impl Ops for Vec3 {}
+impl Ops for Vec4 {}
+
 
 impl Ops for Pt1 {}
 impl Ops for Pt2 {}
@@ -23,7 +29,6 @@ impl Ops for Pt4 {}
 impl PointT for Pt1 {
     type L = Pt1;
     type H = Pt2;
-
     fn ldim(&self) -> Pt1 {
         panic!("hit the lower limit");
     }
@@ -41,7 +46,6 @@ impl PointT for Pt1 {
 impl PointT for Pt2 {
     type L = Pt1;
     type H = Pt3;
-
     fn ldim(&self) -> Pt1 {
         Pt1::new(self[0])
     }
@@ -67,6 +71,7 @@ impl PointT for Pt3 {
     fn hdim(&self, pad: f64) -> Pt4 {
         Pt4::new(self[0], self[1], self[2], pad)
     }
+
     fn lerp(&self, l: f64, q: Pt3) -> Pt3 {
         let p = *self;
         p + (q - p) * l
@@ -112,92 +117,13 @@ pub fn is_coplanar(p1: &Pt3, p2: &Pt3, p3: &Pt3, p4: &Pt3, tol: f64) -> bool {
     det.abs() < tol
 }
 
+
 pub fn is_collinear<P: PointT>(p1: &P, p2: &P, p3: &P, tol: f64) -> bool
     where <P as PointAsVector>::Vector: Dot<f64> + Norm<NormType = f64>
 {
     let p12 = *p1 - *p2;
     let p23 = *p2 - *p3;
     p12.dot(&p23).abs() < tol * p12.norm() * p23.norm()
-}
-
-impl Ops for Vec1 {}
-impl Ops for Vec2 {}
-impl Ops for Vec3 {}
-impl Ops for Vec4 {}
-// impl Lerp for Vec1{}
-// impl Lerp for Vec2{}
-// impl Lerp for Vec3{}
-// impl Lerp for Vec4{}
-
-impl VectorT for Vec1 {
-    type L = Vec1;
-    type H = Vec2;
-    type P = Pt1;
-
-    fn ldim(&self) -> Vec1 {
-        panic!("hit the lower limit");
-    }
-
-    fn hdim(&self, pad: f64) -> Vec2 {
-        Vec2::new(self[0], pad)
-    }
-
-    fn to_pt(&self) -> Self::P {
-        self.to_point()
-    }
-}
-
-impl VectorT for Vec2 {
-    type L = Vec1;
-    type H = Vec3;
-    type P = Pt2;
-
-    fn ldim(&self) -> Vec1 {
-        Vec1::new(self[0])
-    }
-
-    fn hdim(&self, pad: f64) -> Vec3 {
-        Vec3::new(self[0], self[1], pad)
-    }
-
-    fn to_pt(&self) -> Self::P {
-        self.to_point()
-    }
-}
-
-impl VectorT for Vec3 {
-    type L = Vec2;
-    type H = Vec4;
-    type P = Pt3;
-    fn ldim(&self) -> Vec2 {
-        Vec2::new(self[0], self[1])
-    }
-
-    fn hdim(&self, pad: f64) -> Vec4 {
-        Vec4::new(self[0], self[1], self[2], pad)
-    }
-
-    fn to_pt(&self) -> Self::P {
-        self.to_point()
-    }
-}
-
-
-impl VectorT for Vec4 {
-    type L = Vec3;
-    type H = Vec4;
-    type P = Pt4;
-    fn hdim(&self, _: f64) -> Vec4 {
-        panic!("hit the upper limit");
-    }
-
-    fn ldim(&self) -> Vec3 {
-        Vec3::new(self[0], self[1], self[2])
-    }
-
-    fn to_pt(&self) -> Self::P {
-        self.to_point()
-    }
 }
 
 

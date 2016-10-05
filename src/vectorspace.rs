@@ -2,7 +2,8 @@ use std::marker::Copy;
 use std::clone::Clone;
 use tol::Tol;
 use std::fmt::Debug;
-use nalgebra::{Repeat, NumPoint, Indexable, Dimension, Norm, Dot, FloatVector, Origin};
+use std::ops::Add;
+use nalgebra::{Repeat, NumPoint, Indexable, Dimension, PointAsVector};
 
 pub trait Ops : Repeat<f64> + Indexable<usize,f64> + Dimension {
     fn splat(x: f64) -> Self {
@@ -24,8 +25,7 @@ pub trait Ops : Repeat<f64> + Indexable<usize,f64> + Dimension {
 }
 
 
-
-pub trait PointT :   Ops +  NumPoint<f64> + Sized + Origin + Copy + Clone + Debug
+pub trait PointT :   Ops +  NumPoint<f64> + Sized +  Copy + Clone + Debug
 {
     type L : PointT;
     type H : PointT;
@@ -49,13 +49,8 @@ pub trait PointT :   Ops +  NumPoint<f64> + Sized + Origin + Copy + Clone + Debu
     }
 }
 
-pub trait VectorT :   Ops + Norm<NormType=f64>  + Dot<f64> + FloatVector<f64>  {
-    type L : VectorT;
-    type H : VectorT;
-    type P : PointT;
-
-    fn ldim(&self) -> Self::L;
-    fn hdim(&self, pad: f64) -> Self::H;
-
-    fn to_pt(&self) -> Self::P;
+pub fn to_pt<P: PointT>(v: <P as PointAsVector>::Vector) -> P
+    where P: Add<<P as PointAsVector>::Vector>
+{
+    P::zero_pt() + v
 }

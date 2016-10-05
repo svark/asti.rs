@@ -1,4 +1,4 @@
-use vectorspace::{PointT};
+use vectorspace::PointT;
 use bspline::{Bspline, SplineWrapper, SplineMut};
 use periodic_spline::PeriodicBspline;
 use curve::{Curve, FiniteCurve};
@@ -105,8 +105,7 @@ impl<SplineType: RationalTrait> Curve for SplineType {
     }
 }
 
-impl <SplineType: RationalTrait> FiniteCurve for SplineType
-{
+impl<SplineType: RationalTrait> FiniteCurve for SplineType {
     fn param_range(&self) -> (f64, f64) {
         self.to_spline().param_range()
     }

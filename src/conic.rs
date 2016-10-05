@@ -1,7 +1,7 @@
 use tol::Tol;
 use tol::RESABS;
 use rational_bspline::{RationalBspline, rational_derivatives_from_derivatives};
-use vectorspace::{PointT, Ops};
+use vectorspace::{PointT, Ops, to_pt};
 use curve::{Curve, FiniteCurve};
 use std::f64::consts::PI;
 use errcodes::GeomErrorCode;
@@ -11,7 +11,7 @@ use point::{is_collinear, is_coplanar, Pt2, Pt3, Vec3, Vec2};
 use angle::{Angle, perp_in_plane};
 use bspline::{Bspline, SplineWrapper};
 use nalgebra::{Norm, PointAsVector, Dot};
-use std::ops::{Sub, Mul};
+use std::ops::{Sub, Mul, Add};
 
 pub struct ConicArc<P: PointT> {
     p: [P::H; 3],
@@ -71,7 +71,8 @@ impl<P: PointT> ConicArc<P> {
 
     fn make_conic_arc_parallel(p: [P; 3], v: P) -> Result<ConicArc<P>, GeomErrorCode>
       where <P as PointAsVector>::Vector:Dot<f64> + Mul<f64,Output=<P as PointAsVector>::Vector >
-       + Sub<<P as PointAsVector>::Vector,Output=<P as PointAsVector>::Vector > + Norm<NormType=f64>
+       + Sub<<P as PointAsVector>::Vector,Output=<P as PointAsVector>::Vector > + Norm<NormType=f64>,
+       P: Add<<P as PointAsVector>::Vector>
     {
         let s = p[1]; // shoulder point
         let (l1, l2) = (Line::new(&p[0], &p[2]), Line::new(&s, &v));
@@ -82,7 +83,7 @@ impl<P: PointT> ConicArc<P> {
         let a = (q - p[0]).norm() / (q - p[2]).norm();
         let u = a / (1.0 + a);
         let b = ((1.0 - u) * (1.0 - u) + u * u) / (2.0 * u * (1.0 - u));
-        let p1 = P::zero_pt() + (s - q) * b;
+        let p1: P = to_pt((s - q) * b);
         let ref p1s = p1 - s;
         let w = ((1.0 - u) * (1.0 - u) * (s - p[0]).dot(p1s) + (s - p[2]).dot(p1s)) /
                 (2.0 * u * (1.0 - u) * (p1 - p[1]).norm_squared());
@@ -149,13 +150,14 @@ impl<P: PointT> Curve for ConicArc<P> {
                 1 => {
                     let p01 = self.p[0].lerp(u, self.p[1]);
                     let p12 = self.p[1].lerp(u, self.p[2]);
-                    let p01d = P::H::zero_pt() + (self.p[1] - self.p[0]);
-                    let p12d = P::H::zero_pt() + (self.p[2] - self.p[1]);
+                    let p01d: P::H = to_pt(self.p[1] - self.p[0]);
+                    let p12d: P::H = to_pt(self.p[2] - self.p[1]);
                     p12 + (p01d.lerp(u, p12d) - p01)
                 }
                 2 => {
-                    let v = self.p[1].lerp(0.5, self.p[2]) - self.p[0].lerp(0.5, self.p[1]);
-                    (P::H::zero_pt() + v) * 2.0
+                    let dv: P::H = to_pt(self.p[1].lerp(0.5, self.p[2]) -
+                                         self.p[0].lerp(0.5, self.p[1]));
+                    dv * 2.0
                 }
                 _ => P::H::zero_pt(),
             };
