@@ -1,5 +1,5 @@
-pub const PARAMRES: f64 = 1e-10;
-pub const RESABS: f64 = 1e-8;
+pub const PARAMRES: f64 = 1e-10; /// parameter resolution
+pub const RESABS: f64 = 1e-8; /// model resolution
 pub const SQRESABS: f64 = 1e-16;
 use std::cmp::{Ord, Ordering};
 

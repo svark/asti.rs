@@ -1,14 +1,14 @@
 use curve::{Curve, FiniteCurve};
-use vectorspace::VectorSpace;
+use vectorspace::PointT;
 
 #[derive(Debug)]
-pub struct MonomialForm<P: VectorSpace> {
+pub struct MonomialForm<P: PointT> {
     pts: Vec<P>,
     s: f64,
     e: f64,
 }
 
-impl<P: VectorSpace> MonomialForm<P> {
+impl<P: PointT> MonomialForm<P> {
     pub fn new(pts: Vec<P>, s: f64, e: f64) -> Self {
         MonomialForm {
             pts: pts,
@@ -28,21 +28,22 @@ impl<P: VectorSpace> MonomialForm<P> {
     }
 }
 
-impl<P: VectorSpace> Curve for MonomialForm<P> {
+impl<P: PointT> Curve for MonomialForm<P> {
     type T = P;
     fn eval(&self, u: f64) -> P {
-        let mut v: P = Default::default();
+        let mut v: P = P::zero_pt();
         let mut ui = 1.0;
         let u = (u - self.s) / (self.e - self.s);
         for i in 0..self.pts.len() {
-            v = v + self.pts[i] * ui;
+            v += self.pts[i] * ui - P::zero_pt();
             ui = ui * u;
         }
         v
     }
 
     fn eval_derivative(&self, u: f64, der_order: u32) -> P {
-        let mut v: P = Default::default();
+        let zp = P::zero_pt();
+        let mut v: P = zp.clone();
         let mut ui = 1.0;
         let u = (u - self.s) / (self.e - self.s);
         let mut f = 1 as usize;
@@ -51,7 +52,7 @@ impl<P: VectorSpace> Curve for MonomialForm<P> {
         }
         let mut p = 1;
         for i in der_order as usize..self.pts.len() {
-            v = v + self.pts[i] * (f as f64 * ui);
+            v += self.pts[i] * (f as f64 * ui) - zp;
             ui *= u;
             f *= i + 1;
             f /= p;
@@ -61,7 +62,7 @@ impl<P: VectorSpace> Curve for MonomialForm<P> {
     }
 }
 
-impl<P: VectorSpace> FiniteCurve for MonomialForm<P> {
+impl<P: PointT> FiniteCurve for MonomialForm<P> {
     fn param_range(&self) -> (f64, f64) {
         (self.s, self.e)
     }
@@ -69,8 +70,9 @@ impl<P: VectorSpace> FiniteCurve for MonomialForm<P> {
 
 #[test]
 fn it_works() {
-    let mf = MonomialForm::new(vec![1.0;5], 0.0, 1.0);
-    assert_eq!(mf.eval(0.0), 1.0);
-    assert_eq!(mf.eval_derivative(0.0, 2), 2.0);
-    assert_eq!(mf.eval_derivative(1.0, 2), 20.0);
+    use point::Pt1;
+    let mf = MonomialForm::new(vec![Pt1::new(1.0);5], 0.0, 1.0);
+    assert_eq!(mf.eval(0.0), Pt1::new(1.0));
+    assert_eq!(mf.eval_derivative(0.0, 2), Pt1::new(2.0));
+    assert_eq!(mf.eval_derivative(1.0, 2), Pt1::new(20.0));
 }

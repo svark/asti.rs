@@ -1,8 +1,9 @@
-use vectorspace::VectorSpace;
+use vectorspace::PointT;
 use rmat::{locate_nu, sdiv};
 use splinedata::SplineData;
 use tol::PARAMRES;
 use bspline::{Bspline, SplineWrapper};
+
 pub struct Smat<'a> {
     a: f64,
     b: f64,
@@ -23,7 +24,7 @@ impl<'a> Smat<'a> {
     }
 
     pub fn reval<T>(&self, cachea: &[T]) -> Vec<T>
-        where T: VectorSpace
+        where T: PointT
     {
         let size: usize = self.deg as usize + 1;
         let t = self.knots;
@@ -49,7 +50,7 @@ impl<'a> Smat<'a> {
     }
 
     pub fn seval<T>(&self, cachea: &[T]) -> Vec<T>
-        where T: VectorSpace
+        where T: PointT
     {
         let size: usize = self.deg as usize + 1;
         let t = &self.knots;
@@ -168,12 +169,15 @@ pub fn clamp_at_left<T>(b: f64, spl: &T) -> T
 fn it_works(){
     use bspline::{Bspline};
     use splinedata::{SplineData};
+    use nalgebra::Norm;
     use curve::Curve;
+    use point::Pt1;
     use tol::RESABS;
-    let spl = Bspline::new(vec![0.,0.5,0.],  vec![0.,0.,0.,1.,1.,1.]);
+    let spl = Bspline::new( vec![Pt1::new(0.),Pt1::new(0.5),Pt1::new(0.)], 
+     vec![0.,0.,0.,1.,1.,1.] );
     let pt_01 = spl.eval(0.1);
     let spl = rebase_at_left(&spl, 0., &vec![-0.2,-0.1,0.0]);
-    assert!((spl.eval(0.1)- pt_01).len() < RESABS);
+    assert!((spl.eval(0.1)- pt_01).norm() < RESABS);
     let spl = rebase_at_left(&spl, 0., &vec![0.,0.,0.]);
-    assert!(spl.control_points().iter().zip(vec![0.,0.5,0.].iter()).all(|(&x,&y)| (x-y).abs() <1.0e-8));
+    assert!(spl.control_points().iter().zip(vec![0.,0.5,0.].iter()).all(|(&x,&y)| (x[0]-y).abs() < RESABS));
 }

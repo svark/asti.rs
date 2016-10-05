@@ -1,14 +1,14 @@
 use monomial_form::MonomialForm;
 use splinedata::SplineData;
 use curve::FiniteCurve;
-use vectorspace::VectorSpace;
+use vectorspace::PointT;
 use legendre_form::LegendreForm;
 use bezier::Bezier;
 use class_invariant::ClassInvariant;
-use combinations::{ncks,nkcks};
+use combinations::{ncks, nkcks};
 
 
-pub fn to_monomial<P: VectorSpace>(bezf: &Bezier<P>) -> MonomialForm<P> {
+pub fn to_monomial<P: PointT>(bezf: &Bezier<P>) -> MonomialForm<P> {
     debug_assert!(bezf.is_valid().is_ok());
     let b = bezf.control_points();
     let sz = b.len();
@@ -38,14 +38,14 @@ pub fn to_monomial<P: VectorSpace>(bezf: &Bezier<P>) -> MonomialForm<P> {
             if signi * signl < 0 {
                 co = -co;
             }
-            monf[i] = monf[i] + b[l] * co;
+            monf[i] = monf[i] + (b[l] * co - P::zero_pt());
         }
     }
     let (s, e) = bezf.param_range();
     MonomialForm::new(monf, s, e)
 }
 
-pub fn to_bezier<P: VectorSpace>(mf: &MonomialForm<P>) -> Bezier<P> {
+pub fn to_bezier<P: PointT>(mf: &MonomialForm<P>) -> Bezier<P> {
     let mflen = mf.len();
     let mut cpts = vec![P::splat(0.0); mflen];
     let n = mflen - 1;
@@ -59,7 +59,7 @@ pub fn to_bezier<P: VectorSpace>(mf: &MonomialForm<P>) -> Bezier<P> {
                 clk *= l - k + 1;
                 clk /= k;
             }
-            cpts[l] = cpts[l] + mf.point(k) * ((clk as f64) / (cnk as f64));
+            cpts[l] = cpts[l] + (mf.point(k) * ((clk as f64) / (cnk as f64)) - P::zero_pt());
         }
     }
     let (s, e) = mf.param_range();
@@ -67,7 +67,7 @@ pub fn to_bezier<P: VectorSpace>(mf: &MonomialForm<P>) -> Bezier<P> {
 }
 
 // B.-G. Lee et al. / Computer Aided Geometric Design 19 (2002) 709-718
-pub fn to_legendre<P: VectorSpace>(bezf: &Bezier<P>) -> LegendreForm<P> {
+pub fn to_legendre<P: PointT>(bezf: &Bezier<P>) -> LegendreForm<P> {
     let b = bezf.control_points();
     let n = bezf.degree() as usize;
 
@@ -103,7 +103,7 @@ pub fn to_legendre<P: VectorSpace>(bezf: &Bezier<P>) -> LegendreForm<P> {
             } else {
                 -f
             };
-            let legfj = legf[j] + b[k] * mjk;
+            let legfj = legf[j] + (b[k] * mjk - P::zero_pt());
             legf[j] = legfj;
         }
     }
@@ -111,11 +111,11 @@ pub fn to_legendre<P: VectorSpace>(bezf: &Bezier<P>) -> LegendreForm<P> {
     LegendreForm::new(legf, s, e)
 }
 
-pub fn from_legendre<P: VectorSpace>(lf: &LegendreForm<P>) -> Bezier<P> {
+pub fn from_legendre<P: PointT>(lf: &LegendreForm<P>) -> Bezier<P> {
     let n = lf.len() - 1;
     let mut ksign = -1;
     let ncjs = ncks(n);
-    let mut cpts: Vec<P> = vec![P::default();n + 1];
+    let mut cpts: Vec<P> = vec![P::zero_pt();n + 1];
     for k in 0..(n + 1) {
         ksign = -ksign;
         let f = (2.0 * (k as f64) + 1.0).sqrt();
@@ -145,7 +145,7 @@ pub fn from_legendre<P: VectorSpace>(lf: &LegendreForm<P>) -> Bezier<P> {
                 -f
             };
             mjk /= ncjs[j] as f64;
-            let cptsj = cpts[j] + (*lf.coeff(k)) * mjk;
+            let cptsj = cpts[j] + ((*lf.coeff(k)) * mjk - P::zero_pt());
             cpts[j] = cptsj;
         }
     }
@@ -157,72 +157,73 @@ pub fn from_legendre<P: VectorSpace>(lf: &LegendreForm<P>) -> Bezier<P> {
 fn it_works() {
     use curve::Curve;
     use tol::Tol;
+    use point::Pt1;
 
     // ("monomial to bezier")
     {
         println!("conv monomial to bezier");
-        let mut mon: Vec<f64> = Vec::with_capacity(5);
-        for i in 0..5 {
-            mon.push((i as f64) + 1.0);
+        let mut mon: Vec<Pt1> = Vec::with_capacity(5);
+        for i in 0..5i32 {
+            mon.push(Pt1::new((i as f64) + 1.0));
         }
         let mf = MonomialForm::new(mon.clone(), 0.0, 1.0);
         let bzf = to_bezier(&mf);
-        assert!(bzf.eval(0.1).eqres(mf.eval(0.1)));
+        assert!(bzf.eval(0.1)[0].eqres(mf.eval(0.1)[0]));
         let mf_dual = to_monomial(&bzf);
         let cfs = mf_dual.points();
         assert!(cfs.len() == mon.len());
         for i in 0..cfs.len() {
             println!("c:{:?},m:{:?}", cfs[i], mon[i]);
-            assert!(cfs[i].eqres(mon[i]));
+            assert!(cfs[i][0].eqres(mon[i][0]));
         }
     }
     // ("bezier  to monomial")
     {
         println!("conv bezier to monomial");
-        let mut c: Vec<f64> = Vec::with_capacity(5);
-        for i in 0..5 {
-            c.push((i as f64) + 1.0);
+        let mut c: Vec<Pt1> = Vec::with_capacity(5);
+        for i in 0..5i32 {
+            c.push(Pt1::new((i as f64) + 1.0));
         }
 
         let bf = Bezier::new(c.clone(), 1.0, 2.0);
         let mon = to_monomial(&bf);
-        assert!((mon.eval(0.1) - bf.eval(0.1)).small());
+        assert!(mon.eval(0.1)[0].eqres(bf.eval(0.1)[0]));
         println!("{:?},{:?}", mon.eval(0.1), bf.eval(0.1));
         let bf_dual = to_bezier(&mon);
         let cfs = bf_dual.control_points();
         assert!(cfs.len() == c.len());
         for i in 0..cfs.len() {
-            assert!(cfs[i].eqres(c[i]));
+            assert!(cfs[i][0].eqres(c[i][0]));
         }
     }
     // ("legendre to bezier")
     {
         println!("conv legendre to bezier");
-        let mut legf: Vec<f64> = Vec::with_capacity(5);
-        for i in 0..5 {
-            legf.push((i as f64) + 1.0);
+        let mut legf: Vec<Pt1> = Vec::with_capacity(5);
+        for i in 0..5i32 {
+            legf.push(Pt1::new((i as f64) + 1.0));
         }
         let lf = LegendreForm::new(legf.clone(), 0.0, 1.0);
         let bzf = from_legendre(&lf);
-        println!("bz:{:?}", bzf.eval(0.1));
-        println!("lf:{:?}", lf.eval(0.1));
-        assert!(bzf.eval(0.1).eqres(lf.eval(0.1)));
-        println!("bz:{:?}", bzf.eval(0.9));
-        println!("lf:{:?}", lf.eval(0.9));
-        assert!(bzf.eval(0.9).eqres(lf.eval(0.9)));
+        println!("bz:{:?}", bzf.eval(0.1)[0]);
+        println!("lf:{:?}", lf.eval(0.1)[0]);
+        assert!(bzf.eval(0.1)[0].eqres(lf.eval(0.1)[0]));
+        println!("bz:{:?}", bzf.eval(0.9)[0]);
+        println!("lf:{:?}", lf.eval(0.9)[0]);
+        assert!(bzf.eval(0.9)[0].eqres(lf.eval(0.9)[0]));
         let lf_dual = to_legendre(&bzf);
         let cfs = lf_dual.coeffs();
         assert!(cfs.len() == legf.len());
         for i in 0..cfs.len() {
-            assert!(cfs[i].eqres(legf[i]));
+            assert!(cfs[i][0].eqres(legf[i][0]));
         }
     }
     // ("bezier to legendre")
     {
         println!("conv bezier to legendre");
-        let mut c: Vec<f64> = Vec::with_capacity(5);
-        for i in 0..5 {
-            c.push((i as f64) + 1.0);
+        let mut c: Vec<Pt1> = Vec::with_capacity(5);
+        for i in 0..5i32 {
+            c.push(Pt1::new((i as f64) + 1.0));
         }
         let bf = Bezier::new(c.clone(), 1.0, 2.0);
         let lf = to_legendre(&bf);
@@ -230,12 +231,12 @@ fn it_works() {
         println!("lf:{:?}", lf.eval(0.1));
         let bf_dual = from_legendre(&lf);
         println!("bz_dual:{:?}", bf_dual.eval(0.1));
-        assert!(bf.eval(1.1).eqres(lf.eval(1.1)));
-        assert!(bf.eval(1.9).eqres(lf.eval(1.9)));
+        assert!(bf.eval(1.1)[0].eqres(lf.eval(1.1)[0]));
+        assert!(bf.eval(1.9)[0].eqres(lf.eval(1.9)[0]));
         let cfs = bf_dual.control_points();
         assert!(cfs.len() == c.len());
         for i in 0..cfs.len() {
-            assert!(cfs[i].eqres(c[i]));
+            assert!(cfs[i][0].eqres(c[i][0]));
         }
     }
 }

@@ -1,14 +1,15 @@
 use splinedata::{SplineData, KnotManip};
 use bspline::{Bspline, SplineWrapper, SplineMut};
 use curve::{Curve,FiniteCurve};
-use vectorspace::VectorSpace;
+use vectorspace::PointT;
 use tol::Tol;
 use class_invariant::ClassInvariant;
-pub struct PeriodicBspline<Point: VectorSpace> {
+use nalgebra::{PointAsVector,Norm};
+pub struct PeriodicBspline<Point: PointT> {
     spl: Bspline<Point>,
 }
 
-impl<Point: VectorSpace> SplineWrapper for PeriodicBspline<Point> {
+impl<Point: PointT> SplineWrapper for PeriodicBspline<Point> {
     type TW = Point;
     fn to_spline(&self) -> &Bspline<Self::TW> {
         &self.spl
@@ -18,7 +19,7 @@ impl<Point: VectorSpace> SplineWrapper for PeriodicBspline<Point> {
     }
 }
 
-impl<Point: VectorSpace> PeriodicBspline<Point> {
+impl<Point: PointT> PeriodicBspline<Point> {
     pub fn new_from_unwrapped(pts: Vec<Point>, ks: Vec<f64>, degree: usize) -> Self {
         let mut cpts: Vec<Point> = Vec::with_capacity(pts.len() + degree);
         let sz = ks.len() - 1;
@@ -72,7 +73,7 @@ fn periodic_param(rng: (f64, f64), u: f64) -> f64 {
     }
 }
 
-impl<Point: VectorSpace> Curve for PeriodicBspline<Point> {
+impl<Point: PointT> Curve for PeriodicBspline<Point> {
     type T = Point;
     fn eval(&self, u: f64) -> Point {
         let v = periodic_param(self.param_range(), u);
@@ -84,14 +85,17 @@ impl<Point: VectorSpace> Curve for PeriodicBspline<Point> {
     }
 }
 
-impl <P:VectorSpace> FiniteCurve for PeriodicBspline<P>
+impl <P:PointT> FiniteCurve for PeriodicBspline<P>
 {
     fn param_range(&self) -> (f64, f64) {
         return self.spl.param_range();
     }
 }
 
-impl<Point: VectorSpace> ClassInvariant for PeriodicBspline<Point> {
+impl<Point: PointT> ClassInvariant for PeriodicBspline<Point>
+   where <Point as PointAsVector>::Vector:Norm<NormType=f64>
+ {
+    
     fn is_valid(&self) -> Result<bool, &str> {
         try!(self.spl.is_valid());
         let pr = self.param_range();
@@ -102,7 +106,7 @@ impl<Point: VectorSpace> ClassInvariant for PeriodicBspline<Point> {
         for i in 0..(self.degree() + 1 - (mult as u32)) {
             let v1 = self.eval_derivative(pr.0, i);
             let v2 = self.eval_derivative(pr.1, i);
-            if !(v1 - v2).len().small() {
+            if !(v1 - v2).norm().small() {
                 its_periodic = false;
                 break;
             }
@@ -115,7 +119,7 @@ impl<Point: VectorSpace> ClassInvariant for PeriodicBspline<Point> {
     }
 }
 
-impl<P: VectorSpace> SplineMut for PeriodicBspline<P> {
+impl<P: PointT> SplineMut for PeriodicBspline<P> {
     fn into_spline(self) -> Bspline<Self::T> {
         self.spl
     }
@@ -123,11 +127,11 @@ impl<P: VectorSpace> SplineMut for PeriodicBspline<P> {
 
 #[test]
 fn it_works() {
-    use point::Point2;
-    let pts = vec![Point2::new(0.0, 0.0),
-                   Point2::new(0.4, 0.3),
-                   Point2::new(0.2, 0.8),
-                   Point2::new(-0.2, 0.4)];
+    use point::Pt2;
+    let pts = vec![Pt2::new(0.0, 0.0),
+                   Pt2::new(0.4, 0.3),
+                   Pt2::new(0.2, 0.8),
+                   Pt2::new(-0.2, 0.4)];
     let ks = vec![0.0, 0.3, 0.6, 0.8, 1.0];
 
     let bs = PeriodicBspline::new_from_unwrapped(pts, ks, 2);
@@ -138,7 +142,7 @@ fn it_works() {
     assert!(bs.is_valid().is_ok());
     assert_eq!(a, 0.0);
     assert_eq!(b, 1.0);
-    assert!((bs.eval(0.0) - Point2::new(0.04, 0.64)).len().small());
-    assert!((bs.eval(0.2) - Point2::new(-0.12888889, 0.33777778)).len().small());
-    assert!((bs.eval(0.9) - Point2::new(0.185, 0.6975)).len().small());
+    assert!((bs.eval(0.0) - Pt2::new(0.04, 0.64)).norm().small());
+    assert!((bs.eval(0.2) - Pt2::new(-0.12888889, 0.33777778)).norm().small());
+    assert!((bs.eval(0.9) - Pt2::new(0.185, 0.6975)).norm().small());
 }

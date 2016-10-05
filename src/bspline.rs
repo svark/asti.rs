@@ -1,15 +1,16 @@
 use tol::{Tol, PARAMRES};
-use vectorspace::VectorSpace;
+use vectorspace::PointT;
 use util::merge;
 use splinedata::{SplineData, KnotManip};
 use curve::{Curve, FiniteCurve, BlossomCurve};
 use rmat::{eval, locate_nu};
 use class_invariant::ClassInvariant;
 use std::fmt;
-//use std::convert::From;
+
+use nalgebra::PointAsVector;
 
 #[derive(Clone,Debug)]
-pub struct Bspline<Point: VectorSpace> {
+pub struct Bspline<Point: PointT> {
     control_points: Vec<Point>,
     knots: Vec<f64>,
     deg: u32,
@@ -17,7 +18,7 @@ pub struct Bspline<Point: VectorSpace> {
 
 
 impl<P> fmt::Display for Bspline<P>
-    where P: VectorSpace
+    where P: PointT
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(writeln!(f, "cpts:"));
@@ -38,16 +39,19 @@ impl<P> fmt::Display for Bspline<P>
 
 pub trait SplineWrapper
 {
-    type TW:VectorSpace;
+    type TW:PointT;
     fn to_spline(&self) -> &Bspline<Self::TW>;
     fn from_spline(spl: Bspline<Self::TW>) -> Self;
 }
 
-impl<P:VectorSpace> SplineWrapper for Bspline<P>
-{
+impl<P: PointT> SplineWrapper for Bspline<P> {
     type TW = P;
-    fn to_spline(&self) -> &Bspline<P> { self }
-    fn from_spline(spl: Bspline<Self::TW>) -> Self { spl }
+    fn to_spline(&self) -> &Bspline<P> {
+        self
+    }
+    fn from_spline(spl: Bspline<Self::TW>) -> Self {
+        spl
+    }
 }
 
 macro_rules! TW {
@@ -55,7 +59,7 @@ macro_rules! TW {
 }
 
 macro_rules! TWL {
-    () =>  {<< Self as SplineWrapper>::TW as VectorSpace>::L}
+    () =>  {<< Self as SplineWrapper>::TW as PointT>::L}
 }
 
 impl<SplType> KnotManip for SplType
@@ -143,17 +147,17 @@ impl<SplType> BlossomCurve for SplType
         let d = self.degree() as usize;
         let nu = locate_nu(us[0], d, self.knots());
         let basis = eval(self.knots(), (us, Some(nu)), self.degree(), der_order);
-        let mut r: Self::T = Default::default();
+        let mut r: Self::T = Self::T::zero_pt();
         let cpts = &self.control_points()[nu - d..];
         for (&x, &y) in cpts.iter().zip(basis.iter()) {
-            r = r + x * y;
+            r += (x * y).to_vector();
         }
         r
     }
 }
 
 
-impl<P: VectorSpace> ClassInvariant for Bspline<P> {
+impl<P: PointT> ClassInvariant for Bspline<P> {
     fn is_valid(&self) -> Result<bool, &str> {
         let d = self.degree() as usize;
         let cptslen = self.control_points().len();
@@ -210,7 +214,7 @@ impl<SplType: SplineWrapper> SplineData for SplType {
 
 
 impl<P> Curve for Bspline<P>
-    where P: VectorSpace
+    where P: PointT
 {
     type T = P;
 
@@ -225,15 +229,13 @@ impl<P> Curve for Bspline<P>
     }
 }
 
-impl<P:VectorSpace> FiniteCurve for Bspline<P>
-{
+impl<P: PointT> FiniteCurve for Bspline<P> {
     fn param_range(&self) -> (f64, f64) {
         let t = &self.knots;
         let d = self.deg as usize;
         let ncpts = t.len() - d - 1;
         (t[d], t[ncpts])
     }
-
 }
 pub trait SplineMut: SplineData
 {
@@ -241,15 +243,14 @@ pub trait SplineMut: SplineData
 }
 
 
-impl<P: VectorSpace> SplineMut for Bspline<P> {
+impl<P: PointT> SplineMut for Bspline<P> {
     fn into_spline(self) -> Bspline<Self::T> {
         self
     }
 }
 
 
-impl<P:VectorSpace> Bspline<P>
-{
+impl<P: PointT> Bspline<P> {
     pub fn new(cpts: Vec<P>, ks: Vec<f64>) -> Bspline<P> {
         let d = ks.len() - cpts.len() - 1;
         Bspline {
@@ -258,29 +259,30 @@ impl<P:VectorSpace> Bspline<P>
             deg: d as u32,
         }
     }
-
 }
 #[test]
 fn it_works() {
+    use point::Pt1;
     let bs = Bspline {
-        control_points: vec![0.0, 1.0, 0.5],
+        control_points: vec![Pt1::new(0.0), Pt1::new(1.0), Pt1::new(0.5)],
         knots: vec![1.0, 1.0, 1.0, 2.0, 2.0, 2.0],
         deg: 2,
     };
     assert_eq!(bs.is_valid(), Ok(true));
-    assert_eq!(bs.eval(1.0), 0.0);
-    assert_eq!(bs.eval(1.5), 0.625);
-    assert_eq!(bs.eval(2.0), 0.5);
+    let vs = vec![Pt1::new(0.0), Pt1::new(0.625), Pt1::new(0.5)];
+    assert_eq!(bs.eval(1.0), vs[0]);
+    assert_eq!(bs.eval(1.5), vs[1]);
+    assert_eq!(bs.eval(2.0), vs[2]);
 
-    assert_eq!(bs.blossom_eval(0, &[1.0, 1.0, 1.0]), 0.0);
-    assert_eq!(bs.blossom_eval(0, &[2.0, 2.0, 2.0]), 0.5);
-    assert_eq!(bs.blossom_eval(0, &[1.0, 1.0, 2.0]), 1.0);
+    assert_eq!(bs.blossom_eval(0, &[1.0, 1.0, 1.0]), Pt1::new(0.0));
+    assert_eq!(bs.blossom_eval(0, &[2.0, 2.0, 2.0]), Pt1::new(0.5));
+    assert_eq!(bs.blossom_eval(0, &[1.0, 1.0, 2.0]), Pt1::new(1.0));
 
-    assert_eq!(bs.eval_derivative(1.0, 1), 2.0);
+    assert_eq!(bs.eval_derivative(1.0, 1), Pt1::new(2.0));
 
     let spl = bs.insert_knot(1.1);
     assert_eq!(spl.is_valid(), Ok(true));
-    assert_eq!(spl.eval(1.0), 0.0);
-    assert_eq!(spl.eval(1.5), 0.625);
-    assert_eq!(spl.eval(2.0), 0.5);
+    assert_eq!(spl.eval(1.0), vs[0]);
+    assert_eq!(spl.eval(1.5), vs[1]);
+    assert_eq!(spl.eval(2.0), vs[2]);
 }

@@ -1,8 +1,8 @@
-use vectorspace::VectorSpace;
+use vectorspace::PointT;
 
 pub trait SplineData
 {
-    type T : VectorSpace;
+    type T : PointT;
     fn control_points(&self) -> &Vec<Self::T>;
     fn knots(&self) -> &Vec<f64> ;
     fn degree(&self) -> u32;

@@ -1,15 +1,15 @@
-use vectorspace::VectorSpace;
+use vectorspace::PointT;
 use curve::{Curve, FiniteCurve};
 
 
 #[derive(Debug)]
-pub struct LegendreForm<P: VectorSpace> {
+pub struct LegendreForm<P: PointT> {
     a: Vec<P>,
     s: f64,
     e: f64,
 }
 
-impl<P: VectorSpace> LegendreForm<P> {
+impl<P: PointT> LegendreForm<P> {
     pub fn new(a: Vec<P>, s: f64, e: f64) -> LegendreForm<P> {
         LegendreForm { a: a, s: s, e: e }
     }
@@ -31,7 +31,7 @@ impl<P: VectorSpace> LegendreForm<P> {
     }
 }
 
-impl<P: VectorSpace> Curve for LegendreForm<P> {
+impl<P: PointT> Curve for LegendreForm<P> {
     type T = P;
 
     fn eval(&self, u: f64) -> P {
@@ -71,13 +71,13 @@ impl<P: VectorSpace> Curve for LegendreForm<P> {
                                .collect(); // account for remapped domain using chain rule
         }
         for (i, (&a, &c)) in self.a.iter().zip(coeffs.iter()).enumerate() {
-            v = v + a * c * ((2 * i + 1) as f64).sqrt(); // sqrt(2i+1) makes legendre polynomials orthonormal
+            v = v + (a * c * ((2 * i + 1) as f64).sqrt() - P::zero_pt()); // sqrt(2i+1) makes legendre polynomials orthonormal
         }
         v
     }
 }
 
-impl<P: VectorSpace> FiniteCurve for LegendreForm<P> {
+impl<P: PointT> FiniteCurve for LegendreForm<P> {
     fn param_range(&self) -> (f64, f64) {
         (self.s, self.e)
     }
@@ -86,22 +86,24 @@ impl<P: VectorSpace> FiniteCurve for LegendreForm<P> {
 #[test]
 fn it_works() {
     use tol::Tol;
-    let lf = LegendreForm::new(vec![1.0, 0.0, 0.0], 0., 1.);
+    use point::Pt1;
+    use nalgebra::Norm;
+    let lf = LegendreForm::new(vec![Pt1::new(1.0), Pt1::new(0.0), Pt1::new(0.0)], 0., 1.);
     println!("{:?}", lf.eval(0.0));
-    assert!((lf.eval(0.0) - 1.0).len().small());
+    assert!((lf.eval(0.0) - Pt1::new(1.0)).norm().small());
     println!("{:?}", lf.eval(1.0));
-    assert!((lf.eval(1.0) - 1.0).len().small());
+    assert!((lf.eval(1.0) - Pt1::new(1.0)).norm().small());
 
-    let lf = LegendreForm::new(vec![0.0, 1.0, 0.0], 0., 1.);
+    let lf = LegendreForm::new(vec![Pt1::new(0.0), Pt1::new(1.0), Pt1::new(0.0)], 0., 1.);
     println!("{:?}", lf.eval(0.0));
-    assert!((lf.eval(0.0) + (3.0 as f64).sqrt()).len().small());
+    assert!((lf.eval(0.0) - Pt1::new(-(3.0 as f64).sqrt())).norm().small());
     println!("{:?}", lf.eval(1.0));
-    assert!((lf.eval(1.0) - (3.0 as f64).sqrt()).len().small());
+    assert!((lf.eval(1.0) - Pt1::new((3.0 as f64).sqrt())).norm().small());
 
-    let lf = LegendreForm::new(vec![0.0, 0.0, 1.0], 0., 1.);
+    let lf = LegendreForm::new(vec![Pt1::new(0.0), Pt1::new(0.0), Pt1::new(1.0)], 0., 1.);
     println!("{:?}", lf.eval(0.0));
-    assert!((lf.eval(0.0) - (5.0 as f64).sqrt()).len().small());
+    assert!((lf.eval(0.0) - Pt1::new((5.0 as f64).sqrt())).norm().small());
     println!("{:?}", lf.eval(1.0));
-    assert!((lf.eval(1.0) - (5.0 as f64).sqrt()).len().small());
+    assert!((lf.eval(1.0) - Pt1::new((5.0 as f64).sqrt())).norm().small());
 
 }
