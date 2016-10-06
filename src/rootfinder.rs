@@ -49,8 +49,7 @@ fn it_works() {
     use tol::PARAMRES;
     use tol::Param;
     let mut spl = Bspline::new(vec![Pt1::new(-0.5), Pt1::new(0.1), Pt1::new(0.2), Pt1::new(-0.1)]
-                                   .iter()
-                                   .map(|&v| v)
+                                   .into_iter()
                                    .collect(),
                                vec![0., 0., 0., 0.5, 1., 1., 1.]);
     assert!(spl.is_valid().is_ok());

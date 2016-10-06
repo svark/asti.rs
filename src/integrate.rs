@@ -1,9 +1,12 @@
-use vectorspace::PointT;
 use nalgebra::{PointAsVector, Norm};
+use nalgebra::{Repeat, NumPoint, BaseFloat, zero, cast};
 use std::ops::Mul;
-use errcodes::GeomErrorCode;
 use std::result::Result;
 use std::f64;
+
+pub enum IntegrationFailure {
+    IntegrationFailedToConverge,
+}
 // ran the following in Mathematica to the values:
 // gl[n_, x_] := Solve[LegendreP[n, x] == 0];
 // gldash[n_, a] := D[LegendreP[n, x], x] /. x -> a;
@@ -2098,42 +2101,43 @@ fn get_pw() -> [GlPointsWeight; 10] {
     gl_points_weights
 }
 
-fn integrate1d<P: PointT>(f: &Fn(f64) -> P, n: usize, m: usize, a: f64, b: f64) -> P
-where <P as PointAsVector>::Vector: Mul<f64,Output=<P as PointAsVector>::Vector> {
-    let gl_points_weights = get_pw();
-    let points = &gl_points_weights[n].points;
-    let w = &gl_points_weights[n].weights;
 
-    let ga = 0.5 * (b - a);
-    let mn = 0.5 * (b + a);
-
-    let mut s = P::zero_pt();
-    for i in 0..m {
-        let d = points[i];
-        let auxf: P = {
-            let gad = ga * d;
-            f(mn + gad) + f(mn - gad).to_vector()
-        };
-        s += auxf.to_vector() * w[i];
-    }
-    s * ga
-}
-
-pub fn integrate<P: PointT>(speed: &Fn(f64) -> P, t0: f64, t1: f64, tol: f64) -> Result<P,GeomErrorCode>
-where <P as PointAsVector>::Vector: Mul<f64,Output=<P as PointAsVector>::Vector> + Norm<NormType=f64> {
-    let mut lastlen = P::zero_pt();
+pub fn integrate<N:BaseFloat,P: NumPoint<N>  + Repeat<N> >(speed: &Fn(N) -> P, a: N, b: N, tol: N) -> Result<P,IntegrationFailure>
+    where <P as PointAsVector>::Vector: Mul<N,Output=<P as PointAsVector>::Vector> + Norm<NormType=N> {
+    let z: N = zero();
+    let mut lastlen = P::repeat(z);
     let mut m = 1usize;
+    let gl_points_weights = get_pw();
 
     for n in 0..10 {
-        let arclen = integrate1d(speed, n, m, t0, t1);
+        let arclen = {
+            let points = &gl_points_weights[n].points;
+            let w = &gl_points_weights[n].weights;
+
+            let ptfv: N = cast(0.5);
+            let ga: N = ptfv * (b - a);
+            let mn = ptfv * (b + a);
+
+            let mut s = P::repeat(z);
+            for i in 0..m {
+                let pin: N = cast(points[i]);
+                let auxf: P = {
+                    let gad: N = ga * pin;
+                    speed(mn + gad) + speed(mn - gad).to_vector()
+                };
+
+                let win: N = cast(w[i]);
+                s += auxf.to_vector() * win;
+            }
+            s * ga
+        };
         if (lastlen - arclen).norm() < tol {
-            println!("l:{:?},n:{:?}", n, arclen);
             return Ok(arclen);
         }
         lastlen = arclen;
-        m *= 2;
+        m = m << 1;
     }
-    Err(GeomErrorCode::IntegrationFailedToConverge)
+    Err(IntegrationFailure::IntegrationFailedToConverge)
 }
 
 #[test]
@@ -2142,5 +2146,10 @@ fn it_works() {
     use std::f64::consts;
     use point::Pt1;
     let f = |x: f64| Pt1::new(2.0 * x + 1.0 + x.exp());
-    assert!(integrate(&f, 0., 1., RESABS).unwrap()[0].eqres(Pt1::new(1.0 + consts::E)[0]));
+    let res: Result<_, _> = integrate::<f64, Pt1>(&f, 0.0, 1.0, RESABS);
+    let b = match res {
+        Ok(r) => r[0].eqres(1.0f64 + consts::E),
+        Err(_) => false,
+    };
+    assert!(b);
 }

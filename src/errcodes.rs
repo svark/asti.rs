@@ -4,5 +4,4 @@ pub enum GeomErrorCode {
     DegenerateOrSmallConic,
     VectorsNotInPlaneOfPoints,
     DegenerateCircle,
-    IntegrationFailedToConverge,
 }
