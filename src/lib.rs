@@ -31,6 +31,7 @@ pub mod legendre_form;
 pub mod change_basis;
 pub mod paramfinder;
 pub mod integrate;
+pub mod tessellate;
 #[test]
 fn it_works() {
 
