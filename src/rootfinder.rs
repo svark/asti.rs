@@ -31,7 +31,7 @@ pub fn find_next_root(spl: &mut Bspline<Pt1>, prev: f64, tol: f64) -> Option<f64
             None
         }
     } {
-        if spl.eval(root)[0] < tol {
+        if spl.eval(root)[0].abs() < tol {
             return Some(root);
         }
         if spl.mult(root) >= p {
@@ -54,7 +54,7 @@ fn it_works() {
                                vec![0., 0., 0., 0.5, 1., 1., 1.]);
     assert!(spl.is_valid().is_ok());
     let mut lb = 0.0;
-    let vs = vec![2.5 / 12.0, 11.0 / 12.0];
+    let vs = vec![0.2804112775070308, 0.9064582685588182];
     {
         let mut j = 0;
         while let Some(nroot) = find_next_root(&mut spl, lb, PARAMRES) {

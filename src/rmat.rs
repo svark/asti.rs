@@ -2,7 +2,7 @@ use std::f64::INFINITY;
 use tol::PARAMRES;
 use util::upper_bound;
 use tol::Tol; // for small_param
-use std::ops::{MulAssign};
+use std::ops::MulAssign;
 
 struct RMatTau<'a, 'b> {
     knots: &'a [f64],
@@ -90,10 +90,8 @@ impl RMatExplicitResult {
     }
 }
 
-impl<'a, T:Entries> MulAssign<&'a T> for RMatExplicitResult
-{
-    fn mul_assign(&mut self, mat: &'a T)
-    {
+impl<'a, T: Entries> MulAssign<&'a T> for RMatExplicitResult {
+    fn mul_assign(&mut self, mat: &'a T) {
         let basis = &mut self.basis;
         let num_cols = basis.len();
         let mut c = mat.get_ndiag(num_cols, num_cols);
@@ -122,14 +120,15 @@ pub fn locate_nu(u: f64, d: usize, t: &[f64]) -> usize {
     idx
 }
 
-pub fn eval(knots: &[f64], us_nu: (&[f64], Option<usize>), deg: u32, der_order: u32  ) -> Vec<f64> {
 
-    let (us,nu) = us_nu;
+pub fn eval(knots: &[f64], us_nu: (&[f64], Option<usize>), deg: u32, der_order: u32) -> Vec<f64> {
+
+    let (us, nu) = us_nu;
     assert!(us.len() > 0);
     let mu = {
         if let Some(mu) = nu {
             mu
-        }else {
+        } else {
             locate_nu(us[0], deg as usize, knots)
         }
     };
@@ -153,4 +152,11 @@ pub fn eval(knots: &[f64], us_nu: (&[f64], Option<usize>), deg: u32, der_order: 
         res *= &rmat_der;
     }
     res.drain()
+}
+
+pub fn basis(knots: &[f64], u_nu: (f64, Option<usize>), deg: u32) -> Vec<f64> {
+    eval(knots,
+         (vec![u_nu.0;deg as usize + 1].as_slice(), u_nu.1),
+         deg,
+         0)
 }

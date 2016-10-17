@@ -32,6 +32,7 @@ pub mod change_basis;
 pub mod paramfinder;
 pub mod integrate;
 pub mod tessellate;
+pub mod spline_approx;
 #[test]
 fn it_works() {
 
