@@ -33,6 +33,7 @@ pub mod paramfinder;
 pub mod integrate;
 pub mod tessellate;
 pub mod spline_approx;
+pub mod box_compute;
 #[test]
 fn it_works() {
 
