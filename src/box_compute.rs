@@ -72,7 +72,7 @@ fn find_knot_at_bound<SplineT>(bs: &SplineT, ci: i32, mm: &MinMaxBound) -> (f64,
     }
 
     // insert a knot u for which we would have pts[i] ==
-    // pts[i+j] after insertion
+    // pts[j+1] after insertion
     let pi = ex!(pts[i]);
     let pj = ex!(pts[j + 1]);
     let pi1 = ex!(pts[i - 1]);
