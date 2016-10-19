@@ -7,7 +7,7 @@ pub fn cubic_approx1d(f : &Fn(f64)->f64, t: Vec<f64> ) -> Bspline<Pt1>
 {
     let p = 3;
     let n = t.len() - p - 1;
-    assert!(n>2); // place atleast one internal knot.
+    assert!(n>4); // place atleast one internal knot.
 
     let mut pts : Vec<Pt1>  = vec![Pt1::new(0.0);n];
     // pg 173 lyche
@@ -56,5 +56,17 @@ fn it_works() {
        println!("{:?},{:?},{:?}", spl.eval(0.0),spl.eval(-1.324718), spl.eval(2.0));
        let root = find_next_root(spl,-2.0, 1e-8).unwrap();
        println!("{:?}",root);
-       assert!((root + 1.32471795724475).abs() < 1e-8)
+       assert!((root + 1.32471795724475).abs() < 1e-8);
+
+    {
+        use nalgebra::Norm;
+        use tol::Tol;
+        let f = |x| { x*x + x + 1.0}; 
+       let ref mut spl = cubic_approx1d(&f,vec![-1.0,-1.0,-1.0,-1.0,0.,1.,1.,1.,1.]);
+       println!("{:?},{:?},{:?}", spl.eval(-1.0),spl.eval(0.0), spl.eval(1.0));
+       assert!((spl.eval(-1.0) - Pt1::new(1.0)).norm().small());
+       assert!((spl.eval(0.0) - Pt1::new(1.0)).norm().small());
+       assert!((spl.eval(1.0) - Pt1::new(3.0)).norm().small());
+       assert!((spl.eval(0.75f64.sqrt()-0.5) - Pt1::new(1.5)).norm().small());
+    }
 }

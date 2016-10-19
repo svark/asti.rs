@@ -23,6 +23,7 @@ pub trait BlossomCurve
     fn blossom_eval(&self, der_order: u32, us: &[f64]) -> Self::T;
 }
 // todo use lazy thunk
+#[derive(Debug,Copy,Clone)]
 pub struct CurvePoint<P: PointT> {
     pub pnt: P,
     pub t: f64,

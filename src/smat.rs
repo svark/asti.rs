@@ -171,13 +171,13 @@ pub fn clamp_ends<T>(spl: T) -> T
 {
     let d = spl.degree() as usize;
 
-    let spl = if spl.end_mult() != d + 1 {
+    let spl = if spl.start_mult() != d + 1 {
         clamp_at_left(spl.start_param(), &spl)
     } else {
         spl
     };
 
-    if spl.start_mult() != d + 1 {
+    if spl.end_mult() != d + 1 {
         clamp_at_right(spl.end_param(), &spl)
     } else {
         spl

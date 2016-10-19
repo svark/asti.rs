@@ -3,7 +3,7 @@ use splinedata::{KnotManip, SplineData, greville};
 use smat::clamp_ends;
 use bspline::SplineWrapper;
 use vectorspace::Ops;
-use tol::{Tol, OSCoord};
+use tol::Tol;
 enum MinMaxBound {
     MinBound,
     MaxBound,
@@ -25,14 +25,33 @@ fn find_knot_at_bound<SplineT>(bs: &SplineT, ci: i32, mm: &MinMaxBound) -> (f64,
         ($e:expr) => ($e.extract(ci as usize))
     }
 
-    let (j, minmax) = match mm {
+    let (mut j, minmax) = match mm {
         &MinMaxBound::MinBound => {
-            pts.iter().enumerate().min_by_key(|&(_, p)| OSCoord(ex![p])).unwrap()
+            let mut min = (0usize, pts.first().unwrap());
+            for (i, p) in pts.iter().enumerate() {
+                if ex!(min.1) >= ex![p] {
+                    min = (i, p);
+                }
+            }
+            min
         }
         &MinMaxBound::MaxBound => {
-            pts.iter().enumerate().max_by_key(|&(_, p)| OSCoord(ex![p])).unwrap()
+            let mut max = (0usize, pts.first().unwrap());
+            for (i, p) in pts.iter().enumerate() {
+                if ex!(max.1) <= ex![p] {
+                    max = (i, p);
+                }
+            }
+            max
         }
     };
+
+    j = (j..pts.len())
+            .into_iter()
+            .take_while(|&k| (ex!(pts[k]) - ex!(minmax)).small())
+            .last()
+            .unwrap();
+
     let i = (0..j + 1)
                 .rev()
                 .into_iter()
@@ -57,14 +76,14 @@ fn find_knot_at_bound<SplineT>(bs: &SplineT, ci: i32, mm: &MinMaxBound) -> (f64,
     let pi = ex!(pts[i]);
     let pj = ex!(pts[j + 1]);
     let pi1 = ex!(pts[i - 1]);
-
+    
     let ai = (pi - pj) * (t[i + d] - t[i + 1]) /
-             ((pi - pi1) * (t[i + d + 1] - t[i + 1]) + (pi - pj) * (t[i + d] - t[i]));
+             ((pi - pi1) * (t[j + d + 1] - t[j + 1]) + (pi - pj) * (t[i + d] - t[i]));
     let u = t[i + d] - ai * (t[i + d] - t[i]);
     (u, false)
 }
 
-fn find_bound_by_insertion<T>(bs: &T, i: i32, mm: MinMaxBound) -> f64
+fn find_bound_by_insertion<T>(bs: &T, i: i32, mm: MinMaxBound) -> (f64, f64)
     where T: SplineData + SplineWrapper + FiniteCurve + KnotManip + Clone,
           <T as SplineData>::T: Ops
 {
@@ -77,17 +96,19 @@ fn find_bound_by_insertion<T>(bs: &T, i: i32, mm: MinMaxBound) -> f64
         found_bound = f_;
         spl = newspl;
     }
-    bs.eval(u).extract(i as usize)
+    (u, bs.eval(u).extract(i as usize))
 }
 
-pub fn find_min_bound_by_insertion<T>(bs: &T, i: i32) -> f64
+// find param at minima of the given spline projected at coord index `i'
+pub fn find_min_bound_by_insertion<T>(bs: &T, i: i32) -> (f64, f64)
     where T: SplineData + SplineWrapper + FiniteCurve + KnotManip + Clone,
           <T as SplineData>::T: Ops
 {
     find_bound_by_insertion(bs, i, MinMaxBound::MinBound)
 }
 
-pub fn find_max_bound_by_insertion<T>(bs: &T, i: i32) -> f64
+// find param at maxima of the given spline projected at coord index `i'
+pub fn find_max_bound_by_insertion<T>(bs: &T, i: i32) -> (f64, f64)
     where T: SplineData + SplineWrapper + FiniteCurve + KnotManip + Clone,
           <T as SplineData>::T: Ops
 {
@@ -109,8 +130,10 @@ fn it_works() {
                    Pt1::new(0.41),
                    Pt1::new(0.3)];
     let bs = Bspline::new(pts, ks);
-    println!("param at{:?}", find_max_bound_by_insertion(&bs, 0));
-    println!("param at minima{:?}", find_min_bound_by_insertion(&bs, 0));
-    assert!((find_max_bound_by_insertion(&bs, 0) - 0.6515263864065358).abs().small());
-    assert!((find_min_bound_by_insertion(&bs, 0) - 0.0).abs().small());
+    let maxb = find_max_bound_by_insertion(&bs, 0);
+    let minb = find_min_bound_by_insertion(&bs, 0);
+    println!("param at maxima{:?}", maxb.0);
+    println!("param at minima{:?}", minb.0);
+    assert!((maxb.1 - 0.6515263864065358).abs().small());
+    assert!((minb.1 - 0.0).abs().small());
 }
