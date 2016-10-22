@@ -5,7 +5,7 @@ pub fn upper_bound<T>(v: &[T], x: T) -> usize
     where T: PartialOrd<T>
 {
     let mut cnt: usize = v.len();
-    let mut ub : usize = 0;
+    let mut ub: usize = 0;
     while cnt > 0 {
         let step = cnt / 2;
         let mid = ub + step;
@@ -18,6 +18,7 @@ pub fn upper_bound<T>(v: &[T], x: T) -> usize
     }
     ub
 }
+
 
 // use the itertools merge
 pub fn merge<U>(orig: &Vec<U>, taus: &Vec<U>) -> Vec<U>

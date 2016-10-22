@@ -76,7 +76,7 @@ fn find_knot_at_bound<SplineT>(bs: &SplineT, ci: i32, mm: &MinMaxBound) -> (f64,
     let pi = ex!(pts[i]);
     let pj = ex!(pts[j + 1]);
     let pi1 = ex!(pts[i - 1]);
-    
+
     let ai = (pi - pj) * (t[i + d] - t[i + 1]) /
              ((pi - pi1) * (t[j + d + 1] - t[j + 1]) + (pi - pj) * (t[i + d] - t[i]));
     let u = t[i + d] - ai * (t[i + d] - t[i]);
@@ -87,7 +87,8 @@ fn find_bound_by_insertion<T>(bs: &T, i: i32, mm: MinMaxBound) -> (f64, f64)
     where T: SplineData + SplineWrapper + FiniteCurve + KnotManip + Clone,
           <T as SplineData>::T: Ops
 {
-    let mut spl = clamp_ends(bs.clone());
+    let mut spl = bs.clone();
+    clamp_ends(&mut spl);
     let (mut u, mut found_bound) = find_knot_at_bound(&spl, i, &mm);
     while !found_bound {
         let newspl = spl.insert_knot(u);

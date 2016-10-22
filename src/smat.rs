@@ -166,21 +166,16 @@ pub fn clamp_at_left<T>(b: f64, spl: &T) -> T
     rebase_at_left(spl, b, &vec![b; spl.degree() as usize + 1])
 }
 
-pub fn clamp_ends<T>(spl: T) -> T
+pub fn clamp_ends<T>(spl: &mut T)
     where T: SplineWrapper + FiniteCurve + KnotManip
 {
     let d = spl.degree() as usize;
-
-    let spl = if spl.start_mult() != d + 1 {
-        clamp_at_left(spl.start_param(), &spl)
-    } else {
-        spl
-    };
+    if spl.start_mult() != d + 1 {
+        *spl = clamp_at_left(spl.start_param(), spl)
+    }
 
     if spl.end_mult() != d + 1 {
-        clamp_at_right(spl.end_param(), &spl)
-    } else {
-        spl
+        *spl = clamp_at_right(spl.end_param(), spl)
     }
 }
 

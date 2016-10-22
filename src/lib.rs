@@ -35,6 +35,7 @@ pub mod tessellate;
 pub mod spline_approx;
 pub mod box_compute;
 pub mod closest_pt_on_curve;
+pub mod raise_degree;
 #[test]
 fn it_works() {
 
