@@ -4,4 +4,5 @@ pub enum GeomErrorCode {
     DegenerateOrSmallConic,
     VectorsNotInPlaneOfPoints,
     DegenerateCircle,
+    JoinContinuityTooTight,
 }

@@ -45,9 +45,8 @@ pub fn unwrap_param(s: Param) -> f64 {
     let Param(v) = s;
     v
 }
-pub fn unwrap_param_ref(s: &Param) -> f64 {
-    let &Param(v) = s;
-    v
+pub fn unwrap_param_ref(s: &Param) -> &f64 {
+    &s.0
 }
 
 impl PartialEq for Param {

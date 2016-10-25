@@ -6,7 +6,6 @@ use tol::Param;
 use itertools::Itertools;
 use curve::{Curve, FiniteCurve};
 use smat::Smat;
-
 #[derive(Debug)]
 pub struct Bezier<P: PointT> {
     spl: Bspline<P>,
@@ -83,17 +82,11 @@ pub fn split_into_bezier_patches<SplineType>(spl: &SplineType) -> Vec<Bezier<Spl
     let tlen = spl.knots().len();
     let d = spl.degree() as usize;
 
-    let mut uniq_ts = t[d..(tlen - d)]
-                          .iter()
-                          .map(|&x| -> Param { Param(x) })
-                          .dedup()
-                          .peekable();
+    let mut uniq_ts = uniq_ts![t[d..(tlen - d)].iter()].peekable();
     let mut patches: Vec<Bezier<SplineType::T>> = Vec::with_capacity(tlen - 2 * d);
     let cpts = spl.control_points();
-    while let Some(t) = uniq_ts.next() {
-        let Param(a) = t;
-        if let Some(t) = uniq_ts.peek() {
-            let &Param(b) = t;
+    while let Some(a) = uniq_ts.next() {
+        if let Some(&b) = uniq_ts.peek() {
             let nu = spl.locate_nu(a);
             let sm = Smat::new(a, b, spl.knots(), nu, spl.degree());
             let bzcpts = sm.seval(&cpts[nu - d..]);

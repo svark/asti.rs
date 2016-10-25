@@ -19,9 +19,15 @@ pub fn upper_bound<T>(v: &[T], x: T) -> usize
     ub
 }
 
+macro_rules! uniq_ts {
+    ($ts:expr) => {
+          $ts.map(|&x| -> Param { Param(x) })
+            .dedup()
+            .map(|Param(y)| {y})
+  }
+}
 
-// use the itertools merge
-pub fn merge<U>(orig: &Vec<U>, taus: &Vec<U>) -> Vec<U>
+pub fn merge<U>(orig: &[U], taus: &[U]) -> Vec<U>
     where U: PartialOrd<U> + Clone
 {
     orig.iter().cloned().merge(taus.iter().cloned()).collect()

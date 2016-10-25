@@ -10,7 +10,7 @@ extern crate nalgebra;
 pub mod errcodes;
 pub mod point;
 pub mod tol;
-pub mod util;
+#[macro_use]pub mod util;
 pub mod combinations;
 pub mod vectorspace;
 pub mod angle;

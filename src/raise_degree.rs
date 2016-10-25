@@ -1,27 +1,23 @@
 use vectorspace::PointT;
 use bspline::Bspline;
 use curve::BlossomCurve;
-use tol::Tol;
+use tol::Param;
 use smat::clamp_ends;
 use splinedata::SplineData;
-
+use itertools::Itertools;
 pub fn raise_degree<T: PointT>(spl: &Bspline<T>) -> Bspline<T> {
     let mut s = spl.clone();
     clamp_ends(&mut s);
     let ts = s.knots();
-    let mut new_knots: Vec<f64> = Vec::with_capacity(2 * s.knots().len());
-    let mut tsiter = ts.iter().peekable();
-    while let Some(&t) = tsiter.next() {
-        new_knots.push(t);
-        while let Some(&tnext) = tsiter.peek() {
-            if !(tnext - t).abs().small_param() {
-                break;
-            }
-            new_knots.push(t);
-            tsiter.next();
-        }
-        new_knots.push(t);
-    }
+    let d = spl.degree() as usize;
+    let tlen = ts.len();
+    // Vec::with_capacity(2 * s.knots().len());
+    let tsiter = ts.iter();
+    let uniqts: Vec<f64> = uniq_ts!(ts[d..tlen - d].iter()).collect();
+    let new_knots: Vec<f64> = tsiter.clone()
+                                    .merge(&uniqts)
+                                    .cloned()
+                                    .collect();
 
     let num_new_knots = new_knots.len();
     let p: usize = (spl.degree() + 1) as usize;
