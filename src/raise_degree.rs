@@ -43,6 +43,20 @@ pub fn raise_degree<T: PointT>(spl: &Bspline<T>) -> Bspline<T> {
     Bspline::new(new_cpts, new_knots)
 }
 
+pub fn match_degrees<T: PointT>(spl1: &mut Bspline<T>, spl2: &mut Bspline<T>) {
+    while spl1.degree() < spl2.degree() {
+        // revisit move
+        *spl1 = {
+            raise_degree(spl1)
+        };
+    }
+    while spl2.degree() < spl1.degree() {
+        *spl2 = {
+            raise_degree(spl2)
+        };
+    }
+
+}
 
 #[test]
 fn it_works() {

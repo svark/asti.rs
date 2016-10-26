@@ -260,6 +260,25 @@ impl<P: PointT> Bspline<P> {
         }
     }
 }
+// revisit internal api
+pub fn change_knots<P: PointT>(ks: Vec<f64>, spl: Bspline<P>) -> Bspline<P> {
+    debug_assert!({
+        let d = spl.degree() as usize;
+        let kstart = ks[d];
+        let scale = (ks[ks.len() - d - 1] - kstart) / (spl.end_param() - spl.start_param());
+        let mut not_matching = false;
+        for (t, u) in ks.iter().zip(spl.knots().iter()) {
+            if !((t - kstart) - scale * (u - spl.start_param())).small_param() {
+                not_matching = true;
+                break;
+            }
+        }
+        !not_matching
+    });
+    let s = Bspline { knots: ks, ..spl };
+    s
+}
+
 #[test]
 fn it_works() {
     use point::Pt1;

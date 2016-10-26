@@ -116,5 +116,4 @@ fn it_works() {
         assert!((bp.eval(us[j]) - bs.eval(us[j])).norm().small());
         j += 1;
     }
-
 }

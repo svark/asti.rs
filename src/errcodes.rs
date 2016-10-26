@@ -5,4 +5,5 @@ pub enum GeomErrorCode {
     VectorsNotInPlaneOfPoints,
     DegenerateCircle,
     JoinContinuityTooTight,
+    BadKnots,
 }

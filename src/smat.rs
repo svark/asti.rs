@@ -160,10 +160,10 @@ pub fn clamp_at_right<T>(b: f64, spl: &T) -> T
     rebase_at_right(spl, b, &vec![b; spl.degree() as usize + 1])
 }
 
-pub fn clamp_at_left<T>(b: f64, spl: &T) -> T
+pub fn clamp_at_left<T>(a: f64, spl: &T) -> T
     where T: SplineWrapper
 {
-    rebase_at_left(spl, b, &vec![b; spl.degree() as usize + 1])
+    rebase_at_left(spl, a, &vec![a; spl.degree() as usize + 1])
 }
 
 pub fn clamp_ends<T>(spl: &mut T)

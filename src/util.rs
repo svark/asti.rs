@@ -21,9 +21,9 @@ pub fn upper_bound<T>(v: &[T], x: T) -> usize
 
 macro_rules! uniq_ts {
     ($ts:expr) => {
-          $ts.map(|&x| -> Param { Param(x) })
+          $ts.map(|&x| Param(x) )
             .dedup()
-            .map(|Param(y)| {y})
+            .map(|Param(y)| y)
   }
 }
 
