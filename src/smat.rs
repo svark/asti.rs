@@ -166,18 +166,55 @@ pub fn clamp_at_left<T>(a: f64, spl: &T) -> T
     rebase_at_left(spl, a, &vec![a; spl.degree() as usize + 1])
 }
 
-pub fn clamp_ends<T>(spl: &mut T)
+pub fn is_clamped<T>(spl: &T) -> bool
+    where T: SplineData + KnotManip
+{
+    let d = spl.degree() as usize;
+    spl.start_mult() == d + 1 && spl.end_mult() == d + 1
+}
+
+pub fn clamped_knots<T>(spl: &T) -> Vec<f64>
+    where T: SplineData + KnotManip
+{
+    let d = spl.degree() as usize;
+    let ts = spl.knots();
+    let tlen = ts.len();
+    let mut newts = vec![spl.front();d+1];
+    newts.extend(&ts[d + 1..tlen - d - 1]);
+    newts.extend(vec![spl.back();d+1]);
+    newts
+}
+
+pub fn clamp_ends<T>(spl: T) -> T
+    where T: SplineWrapper + FiniteCurve + KnotManip
+{
+    let mut clamped_spl = spl;
+    let d = clamped_spl.degree() as usize;
+    if clamped_spl.start_mult() != d + 1 {
+        clamped_spl = clamp_at_left(clamped_spl.start_param(), &clamped_spl)
+    }
+
+    if clamped_spl.end_mult() != d + 1 {
+        clamped_spl = clamp_at_right(clamped_spl.end_param(), &clamped_spl)
+    }
+    clamped_spl
+}
+
+pub fn clamp_unclamped_ends<T>(spl: &T) -> Option<T>
     where T: SplineWrapper + FiniteCurve + KnotManip
 {
     let d = spl.degree() as usize;
-    if spl.start_mult() != d + 1 {
-        *spl = clamp_at_left(spl.start_param(), spl)
-    }
 
-    if spl.end_mult() != d + 1 {
-        *spl = clamp_at_right(spl.end_param(), spl)
+    if spl.start_mult() != d + 1 {
+        let clamped_spl = clamp_at_left(spl.start_param(), spl);
+        Some(clamp_ends(clamped_spl))
+    } else if spl.end_mult() != d + 1 {
+        Some(clamp_at_right(spl.end_param(), spl))
+    } else {
+        None
     }
 }
+
 
 #[test]
 fn it_works() {

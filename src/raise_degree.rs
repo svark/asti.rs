@@ -2,16 +2,20 @@ use vectorspace::PointT;
 use bspline::Bspline;
 use curve::BlossomCurve;
 use tol::Param;
-use smat::clamp_ends;
+use smat::{is_clamped, clamped_knots};
 use splinedata::SplineData;
 use itertools::Itertools;
 pub fn raise_degree<T: PointT>(spl: &Bspline<T>) -> Bspline<T> {
-    let mut s = spl.clone();
-    clamp_ends(&mut s);
-    let ts = s.knots();
+
+    let cts: Vec<f64>;
+    let ts = if is_clamped(spl) {
+        spl.knots()
+    } else {
+        cts = clamped_knots(spl);
+        &cts
+    };
     let d = spl.degree() as usize;
     let tlen = ts.len();
-    // Vec::with_capacity(2 * s.knots().len());
     let tsiter = ts.iter();
     let uniqts: Vec<f64> = uniq_ts!(ts[d..tlen - d].iter()).collect();
     let new_knots: Vec<f64> = tsiter.clone()

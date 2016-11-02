@@ -1,10 +1,10 @@
 use splinedata::{SplineData, KnotManip};
 use bspline::{Bspline, SplineWrapper, SplineMut};
-use curve::{Curve,FiniteCurve};
+use curve::{Curve, FiniteCurve};
 use vectorspace::PointT;
 use tol::Tol;
 use class_invariant::ClassInvariant;
-use nalgebra::{PointAsVector,Norm};
+use nalgebra::{PointAsVector, Norm};
 pub struct PeriodicBspline<Point: PointT> {
     spl: Bspline<Point>,
 }
@@ -23,7 +23,7 @@ impl<Point: PointT> PeriodicBspline<Point> {
     pub fn new_from_unwrapped(pts: Vec<Point>, ks: Vec<f64>, degree: usize) -> Self {
         let mut cpts: Vec<Point> = Vec::with_capacity(pts.len() + degree);
         let sz = ks.len() - 1;
-
+        assert!(sz == pts.len());
         cpts.extend(pts[sz - degree..sz].iter());
         cpts.extend(pts[..sz].into_iter());
 
@@ -58,12 +58,12 @@ impl<Point: PointT> PeriodicBspline<Point> {
     }
 }
 
-fn periodic_param(rng: (f64, f64), u: f64) -> f64 {
+pub fn periodic_param(rng: (f64, f64), u: f64) -> f64 {
     let (s, e) = rng;
     let mut r = u - s;
     let d = e - s;
     if r > 0.0 && r < d {
-        r
+        u
     } else {
         r %= d;
         if r < 0.0 {
@@ -85,17 +85,15 @@ impl<Point: PointT> Curve for PeriodicBspline<Point> {
     }
 }
 
-impl <P:PointT> FiniteCurve for PeriodicBspline<P>
-{
+impl<P: PointT> FiniteCurve for PeriodicBspline<P> {
     fn param_range(&self) -> (f64, f64) {
         return self.spl.param_range();
     }
 }
 
 impl<Point: PointT> ClassInvariant for PeriodicBspline<Point>
-   where <Point as PointAsVector>::Vector:Norm<NormType=f64>
- {
-    
+    where <Point as PointAsVector>::Vector: Norm<NormType = f64>
+{
     fn is_valid(&self) -> Result<bool, &str> {
         try!(self.spl.is_valid());
         let pr = self.param_range();
@@ -128,10 +126,7 @@ impl<P: PointT> SplineMut for PeriodicBspline<P> {
 #[test]
 fn it_works() {
     use point::Pt2;
-    let pts = vec![Pt2::new(0.0, 0.0),
-                   Pt2::new(0.4, 0.3),
-                   Pt2::new(0.2, 0.8),
-                   Pt2::new(-0.2, 0.4)];
+    let pts = vec![Pt2::new(0.0, 0.0), Pt2::new(0.4, 0.3), Pt2::new(0.2, 0.8), Pt2::new(-0.2, 0.4)];
     let ks = vec![0.0, 0.3, 0.6, 0.8, 1.0];
 
     let bs = PeriodicBspline::new_from_unwrapped(pts, ks, 2);

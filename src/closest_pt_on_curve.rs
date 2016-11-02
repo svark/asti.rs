@@ -35,7 +35,7 @@ pub fn closest_pt_on_curve<P>(p: &P, spl: &Bspline<P>) -> CurvePoint<P>
     }
 
     let quasi_interp = cubic_approx1d(&f, newts);
-    assert!((quasi_interp.eval(-1.0).extract(0) - f(-1.0)).abs().small());
+//    assert!((quasi_interp.eval(-1.0).extract(0) - f(-1.0)).abs().small());
     assert!((quasi_interp.eval(0.0).extract(0) - f(0.0)).abs().small());
     assert!((quasi_interp.eval(1.0).extract(0) - f(1.0)).abs().small());
 

@@ -6,7 +6,7 @@ use smat::{clamp_at_left, rebase_at_left, rebase_at_right};
 use raise_degree::match_degrees;
 use vectorspace::PointT;
 use std::mem::swap;
-use std::iter::{repeat, once};
+use std::iter::once;
 use rev::reverse_curve;
 use curve::Curve;
 use reparametrize::{reparametrize_start, reparametrize};
@@ -38,10 +38,8 @@ pub fn join_starts<T: PointT>(spl1: &Bspline<T>,
     if a > b {
         swap(&mut a, &mut b)
     }
-    let ks: Vec<f64> = repeat(-a)
-                           .take(join_cont + 1)
-                           .chain(repeat(0.0).take(p - join_cont))
-                           .collect();
+    let mut ks: Vec<f64> = vec![-a;join_cont + 1];
+    ks.extend(vec![0.0;p - join_cont]);
 
     let nk = join_cont + 1 - spl2_clamped.mult(a);
 
@@ -120,7 +118,7 @@ pub fn extend_curve_end_to_pt<T>(spl: &Bspline<T>, target: &T) -> Bspline<T>
     let mut ks = vec![1.0 + delta; d + 1];
     ks[0] = 1.0;
 
-    let exs = rebase_at_right(&s, s.front(), ks.as_slice());
+    let exs = rebase_at_right(&s, s.back(), ks.as_slice());
     let newks: Vec<f64> = exs.knots().iter().cloned().chain(once(1.0 + delta)).collect();
     let newcpts = exs.control_points().iter().cloned().chain(once(*target)).collect();
 
@@ -128,4 +126,17 @@ pub fn extend_curve_end_to_pt<T>(spl: &Bspline<T>, target: &T) -> Bspline<T>
 }
 
 #[test]
-fn it_works() {}
+fn it_works() {
+    use point::Pt1;
+    use vectorspace::Ops;
+    use tol::Tol;
+    let bspl = Bspline::new(vec![Pt1::new(0.0), Pt1::new(0.5), Pt1::new(0.2)],
+                            vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
+    let bspl_ex = extend_curve_end_to_pt(&bspl, &Pt1::new(0.05));
+    assert!(bspl_ex.control_points().last().unwrap().extract(0).eqres(0.05));
+    let p = bspl_ex.eval(0.1);
+    use closest_pt_on_curve::closest_pt_on_curve;
+    let crvpt = closest_pt_on_curve(&p, &bspl);
+    assert!((crvpt.pnt - p).norm() < 1e-5);
+    // assert_eq!((bspl_ex.eval(0.1) - bspl.eval(0.1)).norm(), 0.0);
+}

@@ -39,6 +39,8 @@ pub mod raise_degree;
 pub mod rev;
 pub mod reparametrize;
 pub mod trim_extend_join;
+pub mod split_curve;
+
 #[test]
 fn it_works() {
 

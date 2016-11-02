@@ -1,9 +1,10 @@
 use curve::FiniteCurve;
 use splinedata::{KnotManip, SplineData, greville};
-use smat::clamp_ends;
+use smat::clamp_unclamped_ends;
 use bspline::SplineWrapper;
 use vectorspace::Ops;
 use tol::Tol;
+
 enum MinMaxBound {
     MinBound,
     MaxBound,
@@ -87,15 +88,19 @@ fn find_bound_by_insertion<T>(bs: &T, i: i32, mm: MinMaxBound) -> (f64, f64)
     where T: SplineData + SplineWrapper + FiniteCurve + KnotManip + Clone,
           <T as SplineData>::T: Ops
 {
-    let mut spl = bs.clone();
-    clamp_ends(&mut spl);
-    let (mut u, mut found_bound) = find_knot_at_bound(&spl, i, &mm);
-    while !found_bound {
-        let newspl = spl.insert_knot(u);
-        let (u_, f_) = find_knot_at_bound(&newspl, i, &mm);
-        u = u_;
-        found_bound = f_;
-        spl = newspl;
+    let cbs = clamp_unclamped_ends(bs);
+    let spl = cbs.as_ref().unwrap_or(bs);
+
+    let (mut u, found_bound) = find_knot_at_bound(spl, i, &mm);
+    if !found_bound {
+        let mut newspl = spl.insert_knot(u);
+        while {
+            let (u_, f) = find_knot_at_bound(&newspl, i, &mm);
+            u = u_;
+            !f
+        } {
+            newspl = newspl.insert_knot(u);
+        }
     }
     (u, bs.eval(u).extract(i as usize))
 }
