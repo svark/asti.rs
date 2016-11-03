@@ -41,18 +41,18 @@ pub fn join_starts<T: PointT>(spl1: &Bspline<T>,
     let mut ks: Vec<f64> = vec![-a;join_cont + 1];
     ks.extend(vec![0.0;p - join_cont]);
 
-    let nk = join_cont + 1 - spl2_clamped.mult(a);
-
-    let as_: Vec<f64> = vec![a;nk];
-    let spl2_clamped = {
-        spl2_clamped.insert_knots(&as_)
+    let enrich_knots_at_a = |spl: Bspline<T>| {
+        let mut nk: i32 = (join_cont + 1) as i32;
+        nk -= spl.mult(a) as i32;
+        if nk > 0 {
+            let as_: Vec<f64> = vec![a;nk as usize];
+            spl.insert_knots(&as_)
+        } else {
+            spl
+        }
     };
-
-    let nk = join_cont + 1 - spl1_clamped.mult(a);
-    let as_: Vec<f64> = vec![a;nk];
-    let spl1_clamped = {
-        spl1_clamped.insert_knots(&as_)
-    };
+    let spl2_clamped = enrich_knots_at_a(spl2_clamped);
+    let spl1_clamped = enrich_knots_at_a(spl1_clamped);
 
     let spl1_clamped = {
         rebase_at_left(&spl1_clamped, 0.0, ks.as_slice())
@@ -65,12 +65,15 @@ pub fn join_starts<T: PointT>(spl1: &Bspline<T>,
     let cpts2 = spl2_clamped.control_points();
 
     let mut cpts: Vec<T> = Vec::with_capacity(cpts1.len() + cpts2.len());
-    for &cpt in cpts1.iter().rev() {
+    for &cpt in cpts1.iter().skip(join_cont + 1).rev() {
         cpts.push(cpt);
     }
 
-    for (cpt, cpt2) in cpts[cpts1.len() - join_cont - 1..].iter_mut().zip(cpts2.iter()) {
-        *cpt = cpt.lerp(0.5, *cpt2)
+    for (cpt1, cpt2) in cpts1[..join_cont + 1]
+                            .into_iter()
+                            .rev()
+                            .zip(cpts2[..join_cont + 1].into_iter()) {
+        cpts.push(cpt1.lerp(0.5, *cpt2))
     }
 
     for &cpt2 in cpts2[join_cont + 1..].iter() {
@@ -137,6 +140,13 @@ fn it_works() {
     let p = bspl_ex.eval(0.1);
     use closest_pt_on_curve::closest_pt_on_curve;
     let crvpt = closest_pt_on_curve(&p, &bspl);
-    assert!((crvpt.pnt - p).norm() < 1e-5);
-    // assert_eq!((bspl_ex.eval(0.1) - bspl.eval(0.1)).norm(), 0.0);
+    assert!((crvpt.pnt - p).norm() < 1e-6);
+
+    use split_curve::split_open_curve;
+    let (sa, sb) = split_open_curve(&bspl, 0.7);
+    use curve::Curve;
+    use rev::reverse_curve;
+    let rsa = reverse_curve(&sa);
+    let joined_curve = join_starts(&rsa, &sb, 1).unwrap();
+    assert!((joined_curve.eval(0.1) - bspl.eval(0.8)).norm().small());
 }
