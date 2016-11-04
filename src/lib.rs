@@ -29,7 +29,7 @@ pub mod rootfinder;
 pub mod conic;
 pub mod legendre_form;
 pub mod change_basis;
-pub mod paramfinder;
+pub mod param_finder;
 pub mod integrate;
 pub mod tessellate;
 pub mod spline_approx;
