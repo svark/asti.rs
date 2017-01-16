@@ -10,6 +10,7 @@ use std::iter::once;
 use rev::reverse_curve;
 use curve::Curve;
 use reparametrize::{reparametrize_start, reparametrize};
+use split_curve::{split_open_curve, split_periodic_curve};
 
 pub fn join_starts<T: PointT>(spl1: &Bspline<T>,
                               spl2: &Bspline<T>,
@@ -127,6 +128,27 @@ pub fn extend_curve_end_to_pt<T>(spl: &Bspline<T>, target: &T) -> Bspline<T>
 
     Bspline::new(newcpts, newks)
 }
+use curve::FiniteCurve;
+use periodic_spline::{periodic_param, PeriodicBspline};
+
+pub fn trim_open_curve<T: PointT>(spl: &Bspline<T>, a: f64, b: f64) -> Bspline<T> {
+    assert!(b >= a);
+    assert!(spl.start_param() <= a);
+    assert!(spl.end_param() >= b);
+    let (_, sa) = split_open_curve(&spl, a);
+    let (sb, _) = split_open_curve(&sa, b);
+    return sb;
+}
+
+pub fn trim_periodic_curve<T: PointT>(spl: &PeriodicBspline<T>, a: f64, b: f64) -> Bspline<T> {
+    let a = periodic_param(spl.param_range(), a);
+    let b = periodic_param(spl.param_range(), b);
+    let sa = split_periodic_curve(&spl, a);
+    let bbar = sa.start_param() + (b - spl.start_param());
+    let (sb, _) = split_open_curve(&sa, bbar);
+    return sb;
+}
+
 
 #[test]
 fn it_works() {
@@ -142,7 +164,6 @@ fn it_works() {
     let crvpt = closest_pt_on_curve(&p, &bspl);
     assert!((crvpt.pnt - p).norm() < 1e-6);
 
-    use split_curve::split_open_curve;
     let (sa, sb) = split_open_curve(&bspl, 0.7);
     use curve::Curve;
     use rev::reverse_curve;

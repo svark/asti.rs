@@ -40,7 +40,7 @@ pub mod rev;
 pub mod reparametrize;
 pub mod trim_extend_join;
 pub mod split_curve;
-
+pub mod spline_interp;
 #[test]
 fn it_works() {
 
