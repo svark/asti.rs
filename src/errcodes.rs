@@ -6,4 +6,9 @@ pub enum GeomErrorCode {
     DegenerateCircle,
     JoinContinuityTooTight,
     BadKnots,
+    MismatchedArraySizes,
+    NotEnoughPointsForInterp,
+    DuplicatePointData,
+    InvalidPeriodicData,
+    NotEnoughPointsForPeriodicInterp,
 }

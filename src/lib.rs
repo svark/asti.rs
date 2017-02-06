@@ -4,8 +4,8 @@
 //
 extern crate itertools;
 extern crate la;
-#[macro_use]
 extern crate nalgebra;
+extern crate either;
 
 pub mod errcodes;
 pub mod point;
