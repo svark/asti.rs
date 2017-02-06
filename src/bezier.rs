@@ -36,6 +36,26 @@ impl<P: PointT> ClassInvariant for Bezier<P> {
     }
 }
 
+impl<P: PointT> From<Bspline<P>> for Bezier<P> {
+    fn from(spl: Bspline<P>) -> Bezier<P> {
+        let bz = Bezier { spl: spl };
+        assert!(bz.is_valid().is_ok());
+        bz
+    }
+}
+
+impl<P: PointT> AsRef<Bspline<P>> for Bezier<P> {
+    fn as_ref(&self) -> &Bspline<P> {
+        &self.spl
+    }
+}
+
+impl<P: PointT> AsMut<Bspline<P>> for Bezier<P> {
+    fn as_mut(&mut self) -> &mut Bspline<P> {
+        &mut self.spl
+    }
+}
+
 
 impl<P: PointT> SplineWrapper for Bezier<P> {
     type TW = P;

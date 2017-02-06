@@ -49,6 +49,11 @@ pub trait RationalTrait: SplineWrapper
 
 }
 
+impl<P: PointT> From<Bspline<P::H>> for RationalBspline<P> {
+    fn from(spl: Bspline<P::H>) -> RationalBspline<P> {
+        RationalBspline { spl: spl }
+    }
+}
 
 impl<Point> SplineWrapper for RationalBspline<Point>
     where Point: PointT
@@ -111,6 +116,55 @@ impl<SplineType: RationalTrait> FiniteCurve for SplineType {
     }
 }
 
+impl<P: PointT> AsRef<Bspline<P::H>> for RationalBspline<P> {
+    fn as_ref(&self) -> &Bspline<P::H> {
+        &self.spl
+    }
+}
+
+impl<P: PointT> AsMut<Bspline<P::H>> for RationalBspline<P> {
+    fn as_mut(&mut self) -> &mut Bspline<P::H> {
+        &mut self.spl
+    }
+}
+
+
+impl<P: PointT> AsRef<PeriodicBspline<P::H>> for PeriodicRationalBspline<P> {
+    fn as_ref(&self) -> &PeriodicBspline<P::H> {
+        &self.spl
+    }
+}
+
+impl<P: PointT> AsMut<PeriodicBspline<P::H>> for PeriodicRationalBspline<P> {
+    fn as_mut(&mut self) -> &mut PeriodicBspline<P::H> {
+        &mut self.spl
+    }
+}
+
+impl<P: PointT> From<PeriodicBspline<P::H>> for PeriodicRationalBspline<P> {
+    fn from(spl: PeriodicBspline<P::H>) -> PeriodicRationalBspline<P> {
+        PeriodicRationalBspline { spl: spl }
+    }
+}
+// conversion to and from Bspline
+impl<P: PointT> AsRef<Bspline<P::H>> for PeriodicRationalBspline<P> {
+    fn as_ref(&self) -> &Bspline<P::H> {
+        self.spl.as_ref()
+    }
+}
+
+impl<P: PointT> AsMut<Bspline<P::H>> for PeriodicRationalBspline<P> {
+    fn as_mut(&mut self) -> &mut Bspline<P::H> {
+        self.spl.as_mut()
+    }
+}
+
+impl<P: PointT> From<Bspline<P::H>> for PeriodicRationalBspline<P> {
+    fn from(spl: Bspline<P::H>) -> PeriodicRationalBspline<P> {
+        PeriodicRationalBspline { spl: PeriodicBspline::from(spl) }
+    }
+}
+
 impl<P: PointT> SplineMut for RationalBspline<P> {
     fn into_spline(self) -> Bspline<Self::T> {
         self.spl
@@ -122,7 +176,6 @@ impl<P: PointT> SplineMut for PeriodicRationalBspline<P> {
         self.spl.into_spline()
     }
 }
-
 
 #[test]
 fn it_works() {

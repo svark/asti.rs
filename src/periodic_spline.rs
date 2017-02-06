@@ -9,6 +9,25 @@ pub struct PeriodicBspline<Point: PointT> {
     spl: Bspline<Point>,
 }
 
+
+impl<P: PointT> AsRef<Bspline<P>> for PeriodicBspline<P> {
+    fn as_ref(&self) -> &Bspline<P> {
+        &self.spl
+    }
+}
+
+impl<P: PointT> AsMut<Bspline<P>> for PeriodicBspline<P> {
+    fn as_mut(&mut self) -> &mut Bspline<P> {
+        &mut self.spl
+    }
+}
+
+impl<P: PointT> From<Bspline<P>> for PeriodicBspline<P> {
+    fn from(spl: Bspline<P>) -> PeriodicBspline<P> {
+        PeriodicBspline { spl: spl }
+    }
+}
+
 impl<Point: PointT> SplineWrapper for PeriodicBspline<Point> {
     type TW = Point;
     fn to_spline(&self) -> &Bspline<Self::TW> {
