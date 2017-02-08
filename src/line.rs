@@ -1,10 +1,9 @@
 use tol::{Tol, RESABS};
-use vectorspace::{PointT, to_pt};
+use vectorspace::{PointT, to_pt, PV};
 use curve::{Curve, FiniteCurve};
 use std::f64::INFINITY;
 use std::f64;
-use nalgebra::{Cross, PointAsVector, Norm, Dot};
-use std::ops::{Mul, Sub, Add};
+use nalgebra::{Cross, Norm, Dot};
 use point::Pt3;
 pub struct Line<P: PointT> {
     start: P,
@@ -15,7 +14,7 @@ impl<P: PointT> Line<P> {
     fn start_pt(&self) -> &P {
         &self.start
     }
-    fn direction(&self) -> <P as PointAsVector>::Vector {
+    fn direction(&self) -> <P as PV>::V {
         self.dir.to_vector()
     }
 }
@@ -27,14 +26,14 @@ pub struct LineSeg<P: PointT> {
 }
 
 
-impl<P: PointT> Curve for LineSeg<P>
-    where <P as PointAsVector>::Vector: Mul<f64,Output=<P as PointAsVector>::Vector >
-{
+impl<P: PointT> Curve for LineSeg<P> {
     type T = P;
     fn eval(&self, u: f64) -> P {
         let &sp = self.l.start_pt();
-        let d = self.l.direction();
-        sp + d*u
+        let ref d = self.l.dir;
+        let mut res = sp.clone();
+        res.axpy(&u, d);
+        res
     }
 
     fn eval_derivative(&self, u: f64, der_order: u32) -> P {
@@ -46,18 +45,14 @@ impl<P: PointT> Curve for LineSeg<P>
     }
 }
 
-impl<P: PointT> FiniteCurve for LineSeg<P>
-   where <P as PointAsVector>::Vector: Mul<f64,Output=<P as PointAsVector>::Vector >
-{
+impl<P: PointT> FiniteCurve for LineSeg<P> {
     fn param_range(&self) -> (f64, f64) {
         (self.a, self.b)
     }
 }
 
 impl<Point: PointT> Line<Point> {
-    pub fn new(p1: &Point, dir_as_pt: &Point) -> Option<Line<Point>>
-        where <Point as PointAsVector>::Vector: Norm<NormType = f64>
-    {
+    pub fn new(p1: &Point, dir_as_pt: &Point) -> Option<Line<Point>> {
         let dir = (*dir_as_pt).to_vector();
         debug_assert!(!dir.norm().small());
         if let Some(nrml) = dir.try_normalize(RESABS) {
@@ -70,18 +65,13 @@ impl<Point: PointT> Line<Point> {
         }
     }
 
-    pub fn new_joining(p1: &Point, p2: &Point) -> Option<Line<Point>>
-        where <Point as PointAsVector>::Vector: Norm<NormType = f64>,
-              Point: Add<<Point as PointAsVector>::Vector>
-    {
+    pub fn new_joining(p1: &Point, p2: &Point) -> Option<Line<Point>> {
         let dir = to_pt(*p2 - *p1);
         Self::new(p1, &dir)
     }
 
 
-    pub fn closest_point(&self, p:&Point) -> Point
-       where <Point as PointAsVector>::Vector:Dot<f64> + Mul<f64,Output=<Point as PointAsVector>::Vector >
-    {
+    pub fn closest_point(&self, p: &Point) -> Point {
         let l = self;
         let d = l.direction();
         let f = (*p - l.start).dot(&d);
@@ -89,10 +79,7 @@ impl<Point: PointT> Line<Point> {
         return p1;
     }
 
-    pub fn intersect_with_line(&self, l2:&Self) -> Point
-       where <Point as PointAsVector>::Vector:Dot<f64> + Mul<f64,Output=<Point as PointAsVector>::Vector >
-       + Sub<<Point as PointAsVector>::Vector,Output=<Point as PointAsVector>::Vector> + Norm<NormType=f64>
-    {
+    pub fn intersect_with_line(&self, l2: &Self) -> Point {
         let l1 = self;
         let d1 = l1.direction();
         let d2 = l2.direction();
@@ -151,10 +138,7 @@ pub fn closest_points(l1: &Line<Pt3>, l2: &Line<Pt3>) -> (Pt3, Pt3) {
 }
 
 impl<P: PointT> LineSeg<P> {
-    pub fn new_joining(p1: &P, p2: &P) -> Option<LineSeg<P>>
-        where <P as PointAsVector>::Vector: Norm<NormType = f64>,
-              P: Add<<P as PointAsVector>::Vector>
-    {
+    pub fn new_joining(p1: &P, p2: &P) -> Option<LineSeg<P>> {
         let dir = to_pt(*p2 - *p1);
         if let Some(l) = Line::new(p1, &dir) {
             Some(Self::new(l, 0.0, 1.0))
@@ -167,11 +151,7 @@ impl<P: PointT> LineSeg<P> {
         LineSeg { l: l, a: a, b: b }
     }
 
-    pub fn closest_point(&self, p:& P) -> P
-      where <P as PointAsVector>::Vector:Dot<f64> +
-       Mul<f64,Output=<P as PointAsVector>::Vector > + Norm<NormType=f64> +
-       Sub<<P as PointAsVector>::Vector,Output=<P as PointAsVector>::Vector>
-    {
+    pub fn closest_point(&self, p: &P) -> P {
         let (c, d) = (self.eval(self.a), self.eval(self.b));
         let cp = self.l.closest_point(p);
         let proj_in_seg = (cp - c).dot(&(cp - d)) < 0.0;

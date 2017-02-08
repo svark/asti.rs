@@ -3,13 +3,9 @@ use bspline::Bspline;
 use splinedata::SplineData;
 use bezier::split_into_bezier_patches;
 use curve::{Curve, CurvePoint, FiniteCurve};
-use nalgebra::{Norm, PointAsVector};
-use std::ops::Add;
+use nalgebra::Norm;
 
-pub fn tessellate<P: PointT>(eps: f64, spl: &Bspline<P>) -> Vec<CurvePoint<P>>
-    where <P as PointAsVector>::Vector: Norm<NormType = f64>
-    + Add<<P as PointAsVector>::Vector, Output=<P as PointAsVector>::Vector>
-{
+pub fn tessellate<P: PointT>(eps: f64, spl: &Bspline<P>) -> Vec<CurvePoint<P>> {
     let d = spl.degree();
     let f = (d * (d - 1)) as f64;
     let mut patch_pts = Vec::with_capacity(16);

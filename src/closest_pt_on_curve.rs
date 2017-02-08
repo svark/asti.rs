@@ -3,7 +3,6 @@ use vectorspace::PointT;
 use nalgebra::Dot;
 use spline_approx::cubic_approx1d;
 use curve::{CurvePoint, FiniteCurve};
-use nalgebra::PointAsVector;
 use bspline::Bspline;
 use tol::{Param, Tol};
 use splinedata::{SplineData, KnotManip};
@@ -12,8 +11,7 @@ use box_compute::find_min_bound_by_insertion;
 use vectorspace::Ops;
 
 pub fn closest_pt_on_curve<P>(p: &P, spl: &Bspline<P>) -> CurvePoint<P>
-    where P: PointT,
-          <P as PointAsVector>::Vector: Dot<f64>
+    where P: PointT
 {
     let f = |u: f64| {
         let vec = spl.eval(u) - *p;
@@ -35,7 +33,7 @@ pub fn closest_pt_on_curve<P>(p: &P, spl: &Bspline<P>) -> CurvePoint<P>
     }
 
     let quasi_interp = cubic_approx1d(&f, newts);
-//    assert!((quasi_interp.eval(-1.0).extract(0) - f(-1.0)).abs().small());
+    // assert!((quasi_interp.eval(-1.0).extract(0) - f(-1.0)).abs().small());
     assert!((quasi_interp.eval(0.0).extract(0) - f(0.0)).abs().small());
     assert!((quasi_interp.eval(1.0).extract(0) - f(1.0)).abs().small());
 

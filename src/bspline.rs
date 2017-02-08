@@ -4,10 +4,9 @@ use util::merge;
 use splinedata::{SplineData, KnotManip};
 use curve::{Curve, FiniteCurve, BlossomCurve};
 use rmat::{eval, locate_nu};
+use nalgebra::Axpy;
 use class_invariant::ClassInvariant;
 use std::fmt;
-
-use nalgebra::PointAsVector;
 
 #[derive(Clone,Debug)]
 pub struct Bspline<Point: PointT> {
@@ -149,8 +148,8 @@ impl<SplType> BlossomCurve for SplType
         let basis = eval(self.knots(), (us, Some(nu)), self.degree(), der_order);
         let mut r: Self::T = Self::T::zero_pt();
         let cpts = &self.control_points()[nu - d..];
-        for (&x, &y) in cpts.iter().zip(basis.iter()) {
-            r += (x * y).to_vector();
+        for (x, y) in cpts.iter().zip(basis.iter()) {
+            r.axpy(y, x);
         }
         r
     }

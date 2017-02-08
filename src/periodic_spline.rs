@@ -4,7 +4,7 @@ use curve::{Curve, FiniteCurve};
 use vectorspace::PointT;
 use tol::Tol;
 use class_invariant::ClassInvariant;
-use nalgebra::{PointAsVector, Norm};
+use nalgebra::Norm;
 pub struct PeriodicBspline<Point: PointT> {
     spl: Bspline<Point>,
 }
@@ -110,9 +110,7 @@ impl<P: PointT> FiniteCurve for PeriodicBspline<P> {
     }
 }
 
-impl<Point: PointT> ClassInvariant for PeriodicBspline<Point>
-    where <Point as PointAsVector>::Vector: Norm<NormType = f64>
-{
+impl<Point: PointT> ClassInvariant for PeriodicBspline<Point> {
     fn is_valid(&self) -> Result<bool, &str> {
         try!(self.spl.is_valid());
         let pr = self.param_range();

@@ -1,7 +1,7 @@
 use errcodes::GeomErrorCode;
 use bspline::Bspline;
 use splinedata::{SplineData, KnotManip};
-use nalgebra::{Norm, PointAsVector};
+use nalgebra::Norm;
 use smat::{clamp_at_left, rebase_at_left, rebase_at_right};
 use raise_degree::match_degrees;
 use vectorspace::PointT;
@@ -98,8 +98,7 @@ pub fn join_starts<T: PointT>(spl1: &Bspline<T>,
 }
 
 pub fn extend_curve_end_to_pt<T>(spl: &Bspline<T>, target: &T) -> Bspline<T>
-    where T: PointT,
-          <T as PointAsVector>::Vector: Norm<NormType = f64>
+    where T: PointT
 {
     let clmped: Bspline<T> = clamp_at_left(spl.front(), spl);
     let s = reparametrize(clmped, 0., 1.);

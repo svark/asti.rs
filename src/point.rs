@@ -1,6 +1,5 @@
 pub use nalgebra::{Vector1, Vector2, Vector3, Vector4};
-pub use nalgebra::{Point1, Point2, Point3, Point4, center, PointAsVector, Norm, Dot, Absolute,
-                   zero};
+pub use nalgebra::{Point1, Point2, Point3, Point4, center, Norm, Dot, Absolute, zero};
 pub type Pt1 = Point1<f64>;
 pub type Pt2 = Point2<f64>;
 pub type Pt3 = Point3<f64>;
@@ -11,7 +10,7 @@ pub type Vec3 = Vector3<f64>;
 pub type Vec4 = Vector4<f64>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-use vectorspace::{PointT, Ops};
+use vectorspace::{PointT, Ops, PV};
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -26,9 +25,26 @@ impl Ops for Pt2 {}
 impl Ops for Pt3 {}
 impl Ops for Pt4 {}
 
+impl PV for Pt1 {
+    type V = Vec1;
+}
+
+impl PV for Pt2 {
+    type V = Vec2;
+}
+
+impl PV for Pt3 {
+    type V = Vec3;
+}
+
+impl PV for Pt4 {
+    type V = Vec4;
+}
+
 impl PointT for Pt1 {
     type L = Pt1;
     type H = Pt2;
+
     fn ldim(&self) -> Pt1 {
         panic!("hit the lower limit");
     }
@@ -46,6 +62,7 @@ impl PointT for Pt1 {
 impl PointT for Pt2 {
     type L = Pt1;
     type H = Pt3;
+
     fn ldim(&self) -> Pt1 {
         Pt1::new(self[0])
     }
@@ -97,6 +114,7 @@ impl PointT for Pt4 {
     }
 }
 
+
 pub fn is_coplanar(p1: &Pt3, p2: &Pt3, p3: &Pt3, p4: &Pt3, tol: f64) -> bool {
     let pa = center(&center(p1, p2), &center(p3, p4));
     let v1 = *p1 - pa;
@@ -118,9 +136,7 @@ pub fn is_coplanar(p1: &Pt3, p2: &Pt3, p3: &Pt3, p4: &Pt3, tol: f64) -> bool {
 }
 
 
-pub fn is_collinear<P: PointT>(p1: &P, p2: &P, p3: &P, tol: f64) -> bool
-    where <P as PointAsVector>::Vector: Dot<f64> + Norm<NormType = f64>
-{
+pub fn is_collinear<P: PointT>(p1: &P, p2: &P, p3: &P, tol: f64) -> bool {
     let p12 = *p1 - *p2;
     let p23 = *p2 - *p3;
     p12.dot(&p23).abs() < tol * p12.norm() * p23.norm()

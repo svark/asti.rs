@@ -10,8 +10,7 @@ use line::Line;
 use point::{is_collinear, is_coplanar, Pt2, Pt3, Vec3, Vec2};
 use angle::{Angle, perp_in_plane};
 use bspline::{Bspline, SplineWrapper};
-use nalgebra::{Norm, PointAsVector, Dot};
-use std::ops::{Sub, Mul, Add};
+use nalgebra::{Norm, Dot};
 
 pub struct ConicArc<P: PointT> {
     p: [P::H; 3],
@@ -40,8 +39,6 @@ impl<P: PointT> ConicArc<P> {
     }
 
     fn make_conic_arc_non_parallel(p: [P; 3], v: [P; 2]) -> Result<ConicArc<P>, GeomErrorCode>
-      where <P as PointAsVector>::Vector:Dot<f64> + Mul<f64,Output=<P as PointAsVector>::Vector >
-       + Sub<<P as PointAsVector>::Vector,Output=<P as PointAsVector>::Vector> + Norm<NormType=f64>
      {
         let (l1, l2) = (Line::new(&p[0], &v[0]), Line::new(&p[2], &v[1]));
         let l1 = try!(l1.ok_or(GeomErrorCode::DegenerateOrSmallConic));
@@ -70,9 +67,6 @@ impl<P: PointT> ConicArc<P> {
     }
 
     fn make_conic_arc_parallel(p: [P; 3], v: P) -> Result<ConicArc<P>, GeomErrorCode>
-      where <P as PointAsVector>::Vector:Dot<f64> + Mul<f64,Output=<P as PointAsVector>::Vector >
-       + Sub<<P as PointAsVector>::Vector,Output=<P as PointAsVector>::Vector > + Norm<NormType=f64>,
-       P: Add<<P as PointAsVector>::Vector>
     {
         let s = p[1]; // shoulder point
         let (l1, l2) = (Line::new(&p[0], &p[2]), Line::new(&s, &v));

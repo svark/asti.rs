@@ -1,5 +1,5 @@
-pub use nalgebra::{PointAsVector, Norm, Dot, Dimension, Absolute, Indexable};
-use vectorspace::{PointT, to_pt, Ops};
+pub use nalgebra::{Norm, Dot, Dimension, Absolute, Indexable};
+use vectorspace::{PointT, to_pt, PV};
 use la::Matrix;
 use std::ops::Mul;
 use tol::Tol;
@@ -26,7 +26,7 @@ pub enum EndConditions {
 }
 
 fn qmat<P>(pts: &[P]) -> Vec<f64>
-    where P: PointT + Ops
+    where P: PointT
 {
     let mut n: usize = 0;
     let mut cpts = P::zero_pt();
@@ -67,9 +67,7 @@ macro_rules! as_mat {
     }
 }
 
-pub fn find_parameters<P>(pts: &[P], opt: ParametrizationOption) -> Vec<f64>
-    where P: PointT + Ops,
-          <P as PointAsVector>::Vector: Dot<f64> + Norm<NormType = f64> + Clone
+pub fn find_parameters<P:PointT>(pts: &[P], opt: ParametrizationOption) -> Vec<f64>
 {
     match opt {
         ParametrizationOption::ChordLength => {
@@ -150,15 +148,12 @@ fn setrow<P: PointT>(lhs: &mut Matrix<f64>, i: usize, pv: P) {
     }
 }
 
-pub fn setup_mat<P>(m: &mut Matrix<f64>,
+pub fn setup_mat<P:PointT>(m: &mut Matrix<f64>,
                     p: &[P],
                     t: &[f64],
-                    vecs: Vec<(usize,<P as PointAsVector>::Vector)>,
+                    vecs: Vec<(usize,<P as PV>::V)>,
                     d : &mut Matrix<f64>
                     )
-    where P: PointT,
-<P as PointAsVector>::Vector: Norm<NormType = f64> + Clone  
-+ Mul<f64, Output = <P as PointAsVector>::Vector >
 {
     // set up rows 1 through n - 2 of the matrix
     // as in hoschek  pg 88
@@ -197,10 +192,10 @@ pub fn setup_mat<P>(m: &mut Matrix<f64>,
 fn eval_tangents<P>(
     pts :&[P],
     tb: &[f64],
-    explicit_tgts : Vec<(usize,<P as PointAsVector>::Vector)>,
+    explicit_tgts : Vec<(usize,<P as PV>::V)>,
     ec : EndConditions
-) -> Option< Vec<<P as PointAsVector>::Vector> >
-where P:PointT, <P as PointAsVector>::Vector : Copy + Indexable<usize,f64> + Dot<f64> + Norm<NormType = f64> + Mul<f64,Output=<P as PointAsVector>::Vector>
+) -> Option< Vec<<P as PV>::V> >
+where P:PointT
 {
     let dim = P::dimension(None);
     let o = P::zero_pt();
@@ -314,9 +309,9 @@ where P:PointT, <P as PointAsVector>::Vector : Copy + Indexable<usize,f64> + Dot
     };
     
     if let Some(ext) = b {
-        let mut vs: Vec<<P as PointAsVector>::Vector> = Vec::with_capacity(n);
+        let mut vs: Vec<<P as PV>::V> = Vec::with_capacity(n);
         for i in 0..n {
-            let mut v: <P as PointAsVector>::Vector = P::zero_pt().to_vector();
+            let mut v: <P as PV>::V = P::zero_pt().to_vector();
             for j in 0..dim {
                 v[j] = ext.get(i, j);
             }
@@ -332,8 +327,8 @@ where P:PointT, <P as PointAsVector>::Vector : Copy + Indexable<usize,f64> + Dot
 pub fn pchip_preconditions<P>(
     pts : &[P], //random access iter type
     end_conditions : EndConditions,
-    vecs : &Vec< (usize, <P as PointAsVector>::Vector) >
-    ) -> Result<(), GeomErrorCode> where P: PointT , <P as PointAsVector>::Vector : Norm<NormType = f64> + Dot<f64>
+    vecs : &Vec< (usize, <P as PV>::V) >
+    ) -> Result<(), GeomErrorCode> where P: PointT 
 {
     let num_pts = pts.len();
     if num_pts <= 1{
@@ -364,10 +359,9 @@ pub fn pchip_preconditions<P>(
 
 fn pchip_open<P>(pts :&[P],
                  params: &[f64],
-                  tgts: &[<P as PointAsVector>::Vector]
+                  tgts: &[<P as PV>::V]
                   )
--> Bspline<P> where P:PointT + Ops, <P as PointAsVector>::Vector :  
-Dot<f64> + Mul<f64, Output= <P as PointAsVector>::Vector > + Copy
+-> Bspline<P> where P:PointT 
 {
     let n = pts.len();
     let mut cpts = vec![ P::zero_pt(); 2*n];
@@ -383,7 +377,7 @@ Dot<f64> + Mul<f64, Output= <P as PointAsVector>::Vector > + Copy
     for  i in 1..n - 1
     {
         let v = tgts[i];
-        cpts[2*i] = pts[i]  + v *  (e!(params, (i - 1))  * (-1.0/3.0)) ;
+        cpts[2*i] = pts[i]  + v *  (e!(params, (i - 1))  * (-1.0/3.0));
         cpts[2*i + 1] = pts[i]  + v * (e!(params, i)/3.0) ;
         knots[2*i + 2] = params[i];
         knots[2*i + 3] = params[i];
@@ -399,13 +393,11 @@ Dot<f64> + Mul<f64, Output= <P as PointAsVector>::Vector > + Copy
     Bspline::new( cpts, knots)
 }
 
-fn pchip_closed<P>(pts :&[P],
+fn pchip_closed<P:PointT>(pts :&[P],
                    params: &[f64],
-                   tgts: &[<P as PointAsVector>::Vector]
+                   tgts: &[<P as PV>::V]
                    )
 -> PeriodicBspline<P> 
-where P:PointT + Ops, <P as PointAsVector>::Vector :  
-Dot<f64> + Norm<NormType=f64> + Mul<f64, Output= <P as PointAsVector>::Vector > + Copy
 {
     let n = pts.len();
     let mut cpts = vec![P::zero_pt();2*n];
@@ -433,12 +425,11 @@ Dot<f64> + Norm<NormType=f64> + Mul<f64, Output= <P as PointAsVector>::Vector > 
     PeriodicBspline::from_spline(Bspline::new(cpts, knots))
 }
 
-pub fn pchip<P>(pts :&[P],
-         explicit_tgts : Vec<(usize,<P as PointAsVector>::Vector)>,
+pub fn pchip<P:PointT>(pts :&[P],
+         explicit_tgts : Vec<(usize,<P as PV>::V)>,
          ec : EndConditions, 
          po : ParametrizationOption) 
          -> Option<Either<Bspline<P>, PeriodicBspline<P> > >
-         where P: PointT, <P as PointAsVector>::Vector : Indexable<usize,f64> + Dot<f64> + Norm<NormType=f64> + Mul<f64, Output= <P as PointAsVector>::Vector > + Copy 
 {
     let params = find_parameters(pts, po);
     let is_periodic = ec == EndConditions::Periodic;
