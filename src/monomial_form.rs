@@ -35,7 +35,7 @@ impl<P: PointT> Curve for MonomialForm<P> {
         let mut ui = 1.0;
         let u = (u - self.s) / (self.e - self.s);
         for i in 0..self.pts.len() {
-            v += (self.pts[i] * ui).to_vector();
+            v.axpy(&ui, &self.pts[i]);
             ui = ui * u;
         }
         v
@@ -51,7 +51,8 @@ impl<P: PointT> Curve for MonomialForm<P> {
         }
         let mut p = 1;
         for i in der_order as usize..self.pts.len() {
-            v += (self.pts[i] * f as f64 * ui).to_vector();
+            let a = f as f64 * ui;
+            v.axpy(&a, &self.pts[i]);
             ui *= u;
             f *= i + 1;
             f /= p;

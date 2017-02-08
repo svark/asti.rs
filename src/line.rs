@@ -53,12 +53,12 @@ impl<P: PointT> FiniteCurve for LineSeg<P> {
 
 impl<Point: PointT> Line<Point> {
     pub fn new(p1: &Point, dir_as_pt: &Point) -> Option<Line<Point>> {
-        let dir = (*dir_as_pt).to_vector();
+        let dir = (*dir_as_pt).as_vector();
         debug_assert!(!dir.norm().small());
         if let Some(nrml) = dir.try_normalize(RESABS) {
             Some(Line {
                 start: *p1,
-                dir: to_pt(nrml),
+                dir: Point::from_vec(&nrml),
             })
         } else {
             None

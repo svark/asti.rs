@@ -40,14 +40,17 @@ pub fn closest_pt_on_curve<P>(p: &P, spl: &Bspline<P>) -> CurvePoint<P>
     let (t, _) = find_min_bound_by_insertion(&quasi_interp, 0);
     let fdiv = |u: f64| {
         let vec = spl.eval(u) - *p;
-        let vecdash = spl.eval_derivative(u, 1).to_vector();
-        2.0 * vec.dot(&vecdash)
+        let der1 = spl.eval_derivative(u, 1);
+        let vecdash = der1.as_vector();
+        2.0 * vec.dot(vecdash)
     };
     let fdivdiv = |u: f64| {
         let vec = spl.eval(u) - *p;
-        let vecdash = spl.eval_derivative(u, 1).to_vector();
-        let vecdashdash = spl.eval_derivative(u, 2).to_vector();
-        2.0 * vec.dot(&vecdashdash) + 2.0 * vecdash.dot(&vecdash)
+        let ref der1 = spl.eval_derivative(u, 1);
+        let vecdash = der1.as_vector();
+        let ref der2 = spl.eval_derivative(u, 2);
+        let vecdashdash = der2.as_vector();
+        2.0 * vec.dot(vecdashdash) + 2.0 * vecdash.dot(vecdash)
     };
 
     let t_at_min_dist = {

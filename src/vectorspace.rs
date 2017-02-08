@@ -34,6 +34,12 @@ pub trait PV : Indexable<usize,f64> + Sized + Clone {
         };
         v.clone()
    }
+
+   fn as_vector(&self) -> &Self::V {
+        unsafe {
+            mem::transmute(self)
+        }
+   }
    
    fn from_vec(v:&Self::V) -> Self
    {

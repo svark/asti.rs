@@ -38,7 +38,7 @@ pub fn to_monomial<P: PointT>(bezf: &Bezier<P>) -> MonomialForm<P> {
             if signi * signl < 0 {
                 co = -co;
             }
-            monf[i] += (b[l] * co).to_vector();
+            monf[i].axpy(&co, &b[l]);
         }
     }
     let (s, e) = bezf.param_range();
@@ -59,7 +59,8 @@ pub fn to_bezier<P: PointT>(mf: &MonomialForm<P>) -> Bezier<P> {
                 clk *= l - k + 1;
                 clk /= k;
             }
-            cpts[l] += (mf.point(k) * ((clk as f64) / (cnk as f64))).to_vector();
+            let mk = (clk as f64) / (cnk as f64);
+            cpts[l].axpy(&mk, &mf.point(k));
         }
     }
     let (s, e) = mf.param_range();
@@ -103,8 +104,7 @@ pub fn to_legendre<P: PointT>(bezf: &Bezier<P>) -> LegendreForm<P> {
             } else {
                 -f
             };
-            let legfj = legf[j] + (b[k] * mjk).to_vector();
-            legf[j] = legfj;
+            legf[j].axpy(&mjk, &b[k]);
         }
     }
     let (s, e) = bezf.param_range();
@@ -145,7 +145,7 @@ pub fn from_legendre<P: PointT>(lf: &LegendreForm<P>) -> Bezier<P> {
                 -f
             };
             mjk /= ncjs[j] as f64;
-            cpts[j] += (*lf.coeff(k) * mjk).to_vector();
+            cpts[j].axpy(&mjk, lf.coeff(k));
         }
     }
     let (s, e) = lf.param_range();

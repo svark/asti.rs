@@ -39,7 +39,8 @@ pub fn raise_degree<T: PointT>(spl: &Bspline<T>) -> Bspline<T> {
             for l in (j + 1)..p {
                 nts.push(ts[l]);
             }
-            cv += spl.blossom_eval(0, &nts).to_vector();
+            let bv = spl.blossom_eval(0, &nts);
+            cv.axpy(&1.0, &bv);
         }
         cv *= 1.0 / p as f64;
         new_cpts.push(cv);

@@ -31,7 +31,7 @@ fn qmat<P>(pts: &[P]) -> Vec<f64>
     let mut n: usize = 0;
     let mut cpts = P::zero_pt();
     for q in pts {
-        cpts += q.to_vector();
+        cpts.axpy(&1.0,q);
         n = n + 1;
     }
     let cg = cpts * (1.0 / (n as f64));
@@ -39,10 +39,10 @@ fn qmat<P>(pts: &[P]) -> Vec<f64>
     let mut sigmaxy = vec![0.0;dim*dim];
 
     for &q in pts.into_iter() {
-        let p: P = to_pt(q - cg);
+        let v: P::V = q - cg;
         for i in 0..dim {
             for j in i..dim {
-                sigmaxy[i * dim + j] += p.extract(i) * p.extract(j);
+                sigmaxy[i * dim + j] += v[i] * v[j];
             }
         }
     }
@@ -300,22 +300,26 @@ where P:PointT
             let p = o + e!(pts, 0) * (b0 + b1)
                      + e!(pts, 1) * b2;
             setrow(rhs, 0, p);
-            let q = o + pts[n-1].to_vector() * (3./h0 + 2./h1)
-                    + pts[n-2].to_vector() * ((h0 + h1)*(h0 + h1) * ( - 2.*h0 + h1 )/(h0*h0*h0*h1))
-                    + pts[n-3].to_vector() * (-h1*h1/(h0*h0*h0));
+            
+            let mut q = o;
+            let a = 3./h0 + 2./h1;
+            let b = (h0 + h1)*(h0 + h1) * ( - 2.*h0 + h1 )/(h0*h0*h0*h1);
+            let c = -h1*h1/(h0*h0*h0);
+            q.axpy(&a, &pts[n-1] );
+            q.axpy(&b, &pts[n-2]);
+            q.axpy(&c, &pts[n-3]);
             setrow(rhs, n - 1, q);
             m.solve(rhs)
         }
     };
-    
     if let Some(ext) = b {
         let mut vs: Vec<<P as PV>::V> = Vec::with_capacity(n);
         for i in 0..n {
-            let mut v: <P as PV>::V = P::zero_pt().to_vector();
+            let mut v: P = P::zero_pt();
             for j in 0..dim {
                 v[j] = ext.get(i, j);
             }
-            vs.push(v);
+            vs.push(v.to_vector());
         }
         Some(vs)
     } else {
