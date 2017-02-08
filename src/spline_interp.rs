@@ -153,11 +153,11 @@ fn setrow<P: PointT>(lhs: &mut Matrix<f64>, i: usize, pv: P) {
 pub fn setup_mat<P>(m: &mut Matrix<f64>,
                     p: &[P],
                     t: &[f64],
-                    vecs: Vec<<P as PointAsVector>::Vector>,
+                    vecs: Vec<(usize,<P as PointAsVector>::Vector)>,
                     d : &mut Matrix<f64>
                     )
     where P: PointT,
-<P as PointAsVector>::Vector: Norm<NormType = f64> + Clone + Ops
+<P as PointAsVector>::Vector: Norm<NormType = f64> + Clone  
 + Mul<f64, Output = <P as PointAsVector>::Vector >
 {
     // set up rows 1 through n - 2 of the matrix
@@ -181,7 +181,7 @@ pub fn setup_mat<P>(m: &mut Matrix<f64>,
     }
 
     // use wherever available, explicit information about derivatives.
-    for (j, v) in vecs.into_iter().enumerate() {
+    for (j, v) in vecs.into_iter() {
         if !v.norm().small() {
             m.set(j, j - 1, 0.0);
             m.set(j, j, 1.0);
@@ -194,13 +194,13 @@ pub fn setup_mat<P>(m: &mut Matrix<f64>,
 
 
 
-fn eval_tangents_for_pchip<P>(
+fn eval_tangents<P>(
     pts :&[P],
     tb: &[f64],
-    explicit_tgts : Vec<<P as PointAsVector>::Vector>,
+    explicit_tgts : Vec<(usize,<P as PointAsVector>::Vector)>,
     ec : EndConditions
 ) -> Option< Vec<<P as PointAsVector>::Vector> >
-where P:PointT, <P as PointAsVector>::Vector : Ops + Copy + Dot<f64> + Norm<NormType = f64> + Mul<f64,Output=<P as PointAsVector>::Vector>
+where P:PointT, <P as PointAsVector>::Vector : Copy + Indexable<usize,f64> + Dot<f64> + Norm<NormType = f64> + Mul<f64,Output=<P as PointAsVector>::Vector>
 {
     let dim = P::dimension(None);
     let o = P::zero_pt();
@@ -332,14 +332,14 @@ where P:PointT, <P as PointAsVector>::Vector : Ops + Copy + Dot<f64> + Norm<Norm
 pub fn pchip_preconditions<P>(
     pts : &[P], //random access iter type
     end_conditions : EndConditions,
-    vecs : &Vec< <P as PointAsVector>::Vector >
+    vecs : &Vec< (usize, <P as PointAsVector>::Vector) >
     ) -> Result<(), GeomErrorCode> where P: PointT , <P as PointAsVector>::Vector : Norm<NormType = f64> + Dot<f64>
 {
     let num_pts = pts.len();
     if num_pts <= 1{
         return Err(GeomErrorCode::NotEnoughPointsForInterp)
     }
-    if vecs.len() < num_pts  {
+    if vecs.last().unwrap().0 > num_pts  {
          return Err(GeomErrorCode::MismatchedArraySizes);
     }
     if end_conditions  == EndConditions::Periodic {
@@ -429,25 +429,20 @@ Dot<f64> + Norm<NormType=f64> + Mul<f64, Output= <P as PointAsVector>::Vector > 
     }
 
     assert!((pts[n - 1] - pts[0]).norm().small());
-    // assert!(
-    //         (
-    //           to_pt<P>(tgts[n - 1]) - to_pt<P>(tgts[0])
-    //         ).norm().small()
-    //     );
-
+   
     PeriodicBspline::from_spline(Bspline::new(cpts, knots))
 }
 
 pub fn pchip<P>(pts :&[P],
-         explicit_tgts : Vec<<P as PointAsVector>::Vector>,
+         explicit_tgts : Vec<(usize,<P as PointAsVector>::Vector)>,
          ec : EndConditions, 
          po : ParametrizationOption) 
          -> Option<Either<Bspline<P>, PeriodicBspline<P> > >
-         where P: PointT, <P as PointAsVector>::Vector : Ops + Copy + Dot<f64> + Norm<NormType = f64> + Mul<f64,Output=<P as PointAsVector>::Vector>
+         where P: PointT, <P as PointAsVector>::Vector : Indexable<usize,f64> + Dot<f64> + Norm<NormType=f64> + Mul<f64, Output= <P as PointAsVector>::Vector > + Copy 
 {
     let params = find_parameters(pts, po);
     let is_periodic = ec == EndConditions::Periodic;
-    if let Some(vs) = eval_tangents_for_pchip(
+    if let Some(vs) = eval_tangents(
                        pts, params.as_slice(),
                        explicit_tgts, ec) {
         let spl =  if is_periodic
@@ -465,6 +460,7 @@ pub fn pchip<P>(pts :&[P],
 #[test]
 pub fn it_works()
 {
+    
 //     auto bs = geom::piecewise_cubic_hermite_interp(ps.begin(), ps.end(), opts,
 //                                                        std::vector<double>(6, 0));
 //     REQUIRE(bs.eval(0) == Approx(0.0));
