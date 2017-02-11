@@ -8,6 +8,7 @@ use errcodes::GeomErrorCode;
 use bspline::Bspline;
 use periodic_spline::PeriodicBspline;
 use bspline::SplineWrapper;
+use std::iter::once;
 
 #[derive(PartialEq)]
 pub enum ParametrizationOption {
@@ -67,46 +68,42 @@ macro_rules! as_mat {
     }
 }
 
+macro_rules! psums {
+  {$y:expr}  => {
+      once(0.0).chain($y).scan(0.0, |s,e| { *s += e; Some(*s) }).collect::<Vec<f64>>()
+  }
+}
+
 pub fn find_parameters<P:PointT>(pts: &[P], opt: ParametrizationOption) -> Vec<f64>
 {
     match opt {
         ParametrizationOption::ChordLength => {
-            pts.chunks(2)
-              .map(|p| (p[1] - p[0]).norm())
-              .scan(0.0, |x, y| {
-                  *x += y;
-                  Some(*x)
-              })
-              .collect::<Vec<f64>>()
+            psums![pts.windows(2)
+              .map(|p| (p[1] - p[0]).norm())]
         }
+        
         ParametrizationOption::CentripetalLength => {
-            pts.chunks(2)
+            psums![pts.windows(2)
               .map(|p| (p[1] - p[0]).norm().sqrt())
-              .scan(0.0, |x, y| {
-                  *x += y;
-                  Some(*x)
-              })
-              .collect::<Vec<f64>>()
+            ]
         }
-
+        
         ParametrizationOption::AffinelyInvariant => {
             let n = P::dimension(None);
             let ref m = Matrix::new(n, n, qmat(pts));
-            pts.chunks(2)
+            psums![ pts.windows(2)
               .map(|p| to_pt::<P>(p[1] - p[0]))
-              .scan(0.0, |x, y| {
+              .map(|y| {
                   let ref maty = as_mat![y, n];
                   let my = m.mul(maty);
-                  *x += maty.t().dot(&my).sqrt();
-                  Some(*x)
-              })
-              .collect::<Vec<f64>>()
+                  maty.t().dot(&my).sqrt()
+              })]
         }
 
         ParametrizationOption::NeilsonFoley => {
             let n = P::dimension(None);
             let ref m = Matrix::new(n, n, qmat(pts));
-            let widths = pts.chunks(2)
+            let widths = pts.windows(2)
                            .map(|p| to_pt::<P>(p[1] - p[0]))
                            .map(|y| {
                                let ref maty = as_mat![y, n];
@@ -114,23 +111,22 @@ pub fn find_parameters<P:PointT>(pts: &[P], opt: ParametrizationOption) -> Vec<f
                                maty.t().dot(&my).sqrt()
                            })
                            .collect::<Vec<f64>>();
-            let thetas = pts.chunks(2)
+            let thetas = pts.windows(2)
                            .map(|p| (p[1] - p[0]))
-                           .zip(pts.chunks(2).skip(1).map(|p| (p[1] - p[0])))
+                           .zip(pts.windows(2).skip(1).map(|p| (p[1] - p[0])))
                            .map(|(u, v)| (u.dot(&v) / (u.norm() * v.norm())).acos())
                            .collect::<Vec<f64>>();
-            (1..n - 1)
-                .into_iter()
-                .map(|i| {
-                    widths[i] *
-                    (1.0 + 3.0 * thetas[i] * widths[i - 1] / 2.0 * (widths[i - 1] + widths[i]) +
-                     3.0 * thetas[i + 1] * widths[i + 1] / 2.0 * (widths[i] + widths[i + 1]))
-                })
-                .scan(0.0, |x, y| {
-                    *x = *x + y;
-                    Some(*x)
-                })
-                .collect::<Vec<f64>>()
+            psums![
+                     once(widths[0]).chain((1..n - 1)
+                     .into_iter()
+                     .map(|i| {
+                         widths[i] *
+                        (1.0 + 3.0 * thetas[i] * widths[i - 1] / 2.0 * (widths[i - 1] + widths[i]) +
+                        3.0 * thetas[i + 1] * widths[i + 1] / 2.0 * (widths[i] + widths[i + 1]))
+                    }))
+                    .chain(once(widths[n-1]))
+                ]
+                 
         }
     }
 }
@@ -436,6 +432,7 @@ pub fn pchip<P:PointT>(pts :&[P],
          -> Option<Either<Bspline<P>, PeriodicBspline<P> > >
 {
     let params = find_parameters(pts, po);
+    assert_eq!(params.len() , pts.len());
     let is_periodic = ec == EndConditions::Periodic;
     if let Some(vs) = eval_tangents(
                        pts, params.as_slice(),
@@ -455,6 +452,19 @@ pub fn pchip<P:PointT>(pts :&[P],
 #[test]
 pub fn it_works()
 {
+    use point::Pt1;
+    use curve::Curve;
+   let pts = vec![Pt1::new(1.6), Pt1::new(2.0),  Pt1::new(2.5) , Pt1::new(3.0), Pt1::new(3.1), Pt1::new(3.25), Pt1::new(3.1) ];
+   let po = ParametrizationOption::CentripetalLength;
+   let ec = EndConditions::NotAKnot;
+   
+   if let Some(Left(bs)) = pchip(&pts, vec![], ec, po) {
+      assert_eq!(bs.eval(0.0), Pt1::new(1.6));
+      assert_eq!(bs.eval(0.2), Pt1::new(1.727056090664379));
+      assert_eq!(bs.eval(1.2), Pt1::new(2.3917073863769334));
+   }else {
+       assert_eq!(1,0);
+   }
     
 //     auto bs = geom::piecewise_cubic_hermite_interp(ps.begin(), ps.end(), opts,
 //                                                        std::vector<double>(6, 0));
