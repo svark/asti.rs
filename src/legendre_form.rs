@@ -1,5 +1,5 @@
 use vectorspace::PointT;
-use curve::{Curve, FiniteCurve};
+use curve::{Curve, Domain};
 
 
 #[derive(Debug)]
@@ -78,7 +78,7 @@ impl<P: PointT> Curve for LegendreForm<P> {
     }
 }
 
-impl<P: PointT> FiniteCurve for LegendreForm<P> {
+impl<P: PointT> Domain for LegendreForm<P> {
     fn param_range(&self) -> (f64, f64) {
         (self.s, self.e)
     }

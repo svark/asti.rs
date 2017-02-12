@@ -2,7 +2,7 @@ use vectorspace::PointT;
 use bspline::Bspline;
 use splinedata::SplineData;
 use bezier::split_into_bezier_patches;
-use curve::{Curve, CurvePoint, FiniteCurve};
+use curve::{Curve, CurvePoint, Domain};
 use nalgebra::Norm;
 
 pub fn tessellate<P: PointT>(eps: f64, spl: &Bspline<P>) -> Vec<CurvePoint<P>> {

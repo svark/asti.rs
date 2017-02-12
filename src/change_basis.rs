@@ -1,6 +1,6 @@
 use monomial_form::MonomialForm;
 use splinedata::SplineData;
-use curve::FiniteCurve;
+use curve::Domain;
 use vectorspace::PointT;
 use legendre_form::LegendreForm;
 use bezier::Bezier;

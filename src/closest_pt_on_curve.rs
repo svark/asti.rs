@@ -2,7 +2,7 @@
 use vectorspace::PointT;
 use nalgebra::Dot;
 use spline_approx::cubic_approx1d;
-use curve::{CurvePoint, FiniteCurve};
+use curve::{CurvePoint, Domain};
 use bspline::Bspline;
 use tol::{Param, Tol};
 use splinedata::{SplineData, KnotManip};
@@ -74,13 +74,12 @@ pub fn closest_pt_on_curve<P>(p: &P, spl: &Bspline<P>) -> CurvePoint<P>
 fn it_works() {
     use monomial_form::MonomialForm;
     use point::Pt1;
-    use bspline::SplineWrapper;
     let mf = MonomialForm::new(vec![Pt1::new(1.0), Pt1::new(-2.0), Pt1::new(4.)], -1.0, 1.0);
     use change_basis::to_bezier;
     let bzf = to_bezier(&mf);
     println!("at 0:{:?}", mf.eval(0.0).extract(0));
     assert!((bzf.eval(0.0).extract(0) - mf.eval(0.0).extract(0)).abs().small());
     assert!((bzf.eval(0.0).extract(0) - 1.0).abs().small());
-    let cp = closest_pt_on_curve(&Pt1::new(0.0), bzf.to_spline());
+    let cp = closest_pt_on_curve(&Pt1::new(0.0), &*bzf);
     assert!((cp.t + 0.5).small());
 }

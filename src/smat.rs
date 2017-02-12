@@ -112,7 +112,7 @@ pub fn rebase_at_left<SplT>(spl: &SplT, a: f64, us: &[f64]) -> SplT
     if nu + 1 < spl.control_points().len() {
         cpts.extend(spl.control_points()[nu + 1..].to_owned());
     }
-    SplT::from_spline(Bspline::new(cpts, t))
+    SplT::from(Bspline::new(cpts, t))
 }
 
 pub fn rebase_at_right<T>(spl: &T, b: f64, us: &[f64]) -> T
@@ -148,9 +148,9 @@ pub fn rebase_at_right<T>(spl: &T, b: f64, us: &[f64]) -> T
     if nu > deg {
         let mut lcpts = spl.control_points()[0..nu - deg].to_owned();
         lcpts.extend(cpts.into_iter());
-        T::from_spline(Bspline::new(lcpts, t))
+        T::from(Bspline::new(lcpts, t))
     } else {
-        T::from_spline(Bspline::new(cpts, t))
+        T::from(Bspline::new(cpts, t))
     }
 }
 

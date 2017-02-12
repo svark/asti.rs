@@ -1,11 +1,13 @@
 use splinedata::{SplineData, KnotManip};
-use bspline::{Bspline, SplineWrapper, SplineMut};
+use bspline::{Bspline, SplineWrapper};
 use class_invariant::ClassInvariant;
-use vectorspace::PointT;
+use vectorspace::{PointT, AssocPoint};
 use tol::Param;
 use itertools::Itertools;
-use curve::{Curve, FiniteCurve};
+use curve::Curve;
 use smat::Smat;
+use std::ops::Deref;
+
 #[derive(Debug)]
 pub struct Bezier<P: PointT> {
     spl: Bspline<P>,
@@ -21,7 +23,7 @@ impl<P: PointT> Bezier<P> {
 
 impl<P: PointT> ClassInvariant for Bezier<P> {
     fn is_valid(&self) -> Result<bool, &str> {
-        try!(self.to_spline().is_valid());
+        try!(self.spl.is_valid());
         let sz = self.degree() as usize + 1;
         let t = self.knots();
         if t.len() != 2 * sz || self.control_points().len() != sz {
@@ -56,54 +58,45 @@ impl<P: PointT> AsMut<Bspline<P>> for Bezier<P> {
     }
 }
 
-
-impl<P: PointT> SplineWrapper for Bezier<P> {
-    type TW = P;
-    fn to_spline(&self) -> &Bspline<Self::TW> {
-        &self.spl
-    }
-
-    fn from_spline(spl: Bspline<P>) -> Self {
-        let bz = Bezier { spl: spl };
-        assert!(bz.is_valid().is_ok());
-        bz
-    }
-}
-
-impl<P: PointT> SplineMut for Bezier<P> {
-    fn into_spline(self) -> Bspline<Self::T> {
+impl<P: PointT> Into<Bspline<P>> for Bezier<P> {
+    fn into(self) -> Bspline<P> {
         self.spl
     }
 }
+
+impl<P: PointT> Deref for Bezier<P> {
+    type Target = Bspline<P>;
+    fn deref(&self) -> &Bspline<P> {
+        self.as_ref()
+    }
+}
+
+impl<P: PointT> AssocPoint for Bezier<P> {
+    type TW = P;
+}
+impl<P: PointT> SplineWrapper for Bezier<P> {}
 
 impl<P: PointT> Curve for Bezier<P> {
     type T = P;
 
     fn eval(&self, v: f64) -> Self::T {
-        self.to_spline().eval(v)
+        self.as_ref().eval(v)
     }
 
     fn eval_derivative(&self, v: f64, order: u32) -> Self::T {
-        self.to_spline().eval_derivative(v, order)
+        self.as_ref().eval_derivative(v, order)
     }
 }
 
-impl<P: PointT> FiniteCurve for Bezier<P> {
-    fn param_range(&self) -> (f64, f64) {
-        self.to_spline().param_range()
-    }
-}
-
-
-pub fn split_into_bezier_patches<SplineType>(spl: &SplineType) -> Vec<Bezier<SplineType::T>>
-    where SplineType: SplineWrapper + SplineMut
+pub fn split_into_bezier_patches<P>(spl: &Bspline<P>) -> Vec<Bezier<P>>
+    where P: PointT
 {
     let t = spl.knots();
     let tlen = spl.knots().len();
     let d = spl.degree() as usize;
 
     let mut uniq_ts = uniq_ts![t[d..(tlen - d)].iter()].peekable();
-    let mut patches: Vec<Bezier<SplineType::T>> = Vec::with_capacity(tlen - 2 * d);
+    let mut patches: Vec<Bezier<P>> = Vec::with_capacity(tlen - 2 * d);
     let cpts = spl.control_points();
     while let Some(a) = uniq_ts.next() {
         if let Some(&b) = uniq_ts.peek() {
@@ -112,11 +105,12 @@ pub fn split_into_bezier_patches<SplineType>(spl: &SplineType) -> Vec<Bezier<Spl
             let bzcpts = sm.seval(&cpts[nu - d..]);
             let mut ks = vec![a;d+1];
             ks.extend(vec![b;d+1]);
-            patches.push(Bezier::from_spline(Bspline::new(bzcpts, ks)));
+            patches.push(Bezier::from(Bspline::new(bzcpts, ks)));
         }
     }
     patches
 }
+
 #[test]
 fn it_works() {
     use point::Pt2;

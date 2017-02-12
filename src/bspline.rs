@@ -1,12 +1,14 @@
 use tol::{Tol, PARAMRES};
-use vectorspace::PointT;
+use vectorspace::{PointT, AssocPoint};
 use util::merge;
 use splinedata::{SplineData, KnotManip};
-use curve::{Curve, FiniteCurve, BlossomCurve};
+use curve::{Curve, Domain, BlossomCurve};
 use rmat::{eval, locate_nu};
 use nalgebra::Axpy;
 use class_invariant::ClassInvariant;
 use std::fmt;
+// use curve::Domain;
+// use vectorspace::AssocPoint;
 
 #[derive(Clone,Debug)]
 pub struct Bspline<Point: PointT> {
@@ -36,33 +38,57 @@ impl<P> fmt::Display for Bspline<P>
     }
 }
 
-pub trait SplineWrapper
-{
-    type TW:PointT;
-    fn to_spline(&self) -> &Bspline<Self::TW>;
-    fn from_spline(spl: Bspline<Self::TW>) -> Self;
-}
-
-impl<P: PointT> SplineWrapper for Bspline<P> {
-    type TW = P;
-    fn to_spline(&self) -> &Bspline<P> {
+impl<P: PointT> AsMut<Bspline<P>> for Bspline<P> {
+    fn as_mut(&mut self) -> &mut Bspline<P> {
         self
     }
-    fn from_spline(spl: Bspline<Self::TW>) -> Self {
-        spl
-    }
 }
 
-macro_rules! TW {
-    () =>  {<Self as SplineWrapper>::TW}
+impl<P: PointT> AssocPoint for Bspline<P> {
+    type TW = P;
 }
 
-macro_rules! TWL {
-    () =>  {<< Self as SplineWrapper>::TW as PointT>::L}
+pub trait  SplineWrapper : AssocPoint
++ From<
+      Bspline<
+        <Self as AssocPoint>::TW
+        >
+    >
+     + Into<
+     Bspline<
+        <Self as AssocPoint>::TW
+        >
+    >
+    + AsRef<
+    Bspline<
+        <Self as AssocPoint>::TW
+        >
+    >
+{
+}
+
+trait SplineMutWrapper : AssocPoint
++ From<
+      Bspline<
+        <Self as AssocPoint>::TW
+        >
+    >
+     + Into<
+     Bspline<
+        <Self as AssocPoint>::TW
+        >
+    >
++ AsMut<
+    Bspline<
+        <Self as AssocPoint>::TW
+        >
+    >
+{
+
 }
 
 impl<SplType> KnotManip for SplType
-    where SplType: SplineWrapper
+    where SplType: SplineData + From<Bspline<<SplType as SplineData>::T>>
 {
     fn start_mult(&self) -> usize {
         let f = self.front();
@@ -121,7 +147,7 @@ impl<SplType> KnotManip for SplType
         for i in 0..ncpts {
             cpts.push(self.blossom_eval(0, &taus[i..]));
         }
-        Self::from_spline(Bspline::new(cpts, taus))
+        Self::from(Bspline::new(cpts, taus))
     }
 
     fn insert_knot(&self, tau: f64) -> Self {
@@ -159,11 +185,11 @@ impl<SplType> BlossomCurve for SplType
 impl<P: PointT> ClassInvariant for Bspline<P> {
     fn is_valid(&self) -> Result<bool, &str> {
         let d = self.degree() as usize;
-        let cptslen = self.control_points().len();
+        let cptslen = self.control_points.len();
         if self.knots().len() != cptslen + d + 1 {
             return Err("degree != #knots - #cpts - 1 ");
         }
-        if self.degree() < 1 {
+        if d < 1 {
             return Err("zero degree");
         }
 
@@ -184,8 +210,8 @@ impl<P: PointT> ClassInvariant for Bspline<P> {
                 continue;
             }
 
-            let m = self.mult(self.knots[j]);
-            if m > self.degree() as usize + 1 {
+            let m = self.mult(t[j]);
+            if m > d + 1 {
                 return Err("too many dups in knots");
             }
 
@@ -195,19 +221,27 @@ impl<P: PointT> ClassInvariant for Bspline<P> {
     }
 }
 
+impl<P: PointT> AsRef<Bspline<P>> for Bspline<P> {
+    fn as_ref(&self) -> &Bspline<P> {
+        self
+    }
+}
+
+impl<P: PointT> SplineWrapper for Bspline<P> {}
+impl<P: PointT> SplineMutWrapper for Bspline<P> {}
 
 impl<SplType: SplineWrapper> SplineData for SplType {
-    type T = <Self as SplineWrapper>::TW;
+    type T = <Self as AssocPoint>::TW;
     fn control_points(&self) -> &Vec<Self::T> {
-        &self.to_spline().control_points
+        &self.as_ref().control_points
     }
 
     fn knots(&self) -> &Vec<f64> {
-        &self.to_spline().knots
+        &self.as_ref().knots
     }
 
     fn degree(&self) -> u32 {
-        self.to_spline().deg
+        self.as_ref().deg
     }
 }
 
@@ -228,26 +262,14 @@ impl<P> Curve for Bspline<P>
     }
 }
 
-impl<P: PointT> FiniteCurve for Bspline<P> {
+impl<S: SplineData> Domain for S {
     fn param_range(&self) -> (f64, f64) {
-        let t = &self.knots;
-        let d = self.deg as usize;
+        let t = self.knots();
+        let d = self.degree() as usize;
         let ncpts = t.len() - d - 1;
         (t[d], t[ncpts])
     }
 }
-pub trait SplineMut: SplineData
-{
-    fn into_spline(self) -> Bspline<Self::T>;
-}
-
-
-impl<P: PointT> SplineMut for Bspline<P> {
-    fn into_spline(self) -> Bspline<Self::T> {
-        self
-    }
-}
-
 
 impl<P: PointT> Bspline<P> {
     pub fn new(cpts: Vec<P>, ks: Vec<f64>) -> Bspline<P> {
@@ -259,6 +281,7 @@ impl<P: PointT> Bspline<P> {
         }
     }
 }
+
 // revisit internal api
 pub fn change_knots<P: PointT>(ks: Vec<f64>, spl: Bspline<P>) -> Bspline<P> {
     debug_assert!({

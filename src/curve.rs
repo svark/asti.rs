@@ -6,7 +6,7 @@ pub trait Curve
     fn eval_derivative(&self, v: f64, order: u32) -> Self::T;
 }
 
-pub trait FiniteCurve: Curve
+pub trait Domain
 {
     fn param_range(&self) -> (f64, f64);
     fn start_param(&self) -> f64 {
@@ -16,6 +16,13 @@ pub trait FiniteCurve: Curve
         self.param_range().1
     }
 }
+
+pub trait FiniteCurve: Curve + Domain
+{
+
+}
+
+impl<T> FiniteCurve for T where T: Domain + Curve {}
 
 pub trait BlossomCurve
 {

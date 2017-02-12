@@ -4,7 +4,7 @@ use vectorspace::{PointT, Ops};
 use point::{Pt2, Pt3};
 use la::{Matrix, SVD};
 use splinedata::SplineData;
-use curve::FiniteCurve;
+use curve::{Domain};
 
 // applications to cagd, thomas sederberg (book: cox,sturmfels,manocha, applns to computational algebraic geometry)
 pub fn find_param_2d_weighted(p: &Pt2, bf: &Bezier<Pt3>) -> Option<f64> {

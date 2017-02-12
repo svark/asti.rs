@@ -1,4 +1,4 @@
-use bspline::{Bspline, SplineMut};
+use bspline::Bspline;
 use periodic_spline::{PeriodicBspline, periodic_param};
 use tol::Tol;
 use smat::{clamp_ends, clamp_at_right, clamp_at_left};
@@ -6,8 +6,7 @@ use splinedata::KnotManip;
 use rmat::locate_nu;
 use vectorspace::PointT;
 use splinedata::SplineData;
-use curve::FiniteCurve;
-use bspline::SplineWrapper;
+use curve::Domain;
 
 pub fn split_open_curve<P: PointT>(spl: &Bspline<P>, u: f64) -> (Bspline<P>, Bspline<P>) {
     (clamp_at_right(u, spl), clamp_at_left(u, spl))
@@ -49,7 +48,7 @@ pub fn rotate_base_knot<P: PointT>(pspl: &PeriodicBspline<P>, nu: usize) -> Peri
 pub fn split_periodic_curve<P: PointT>(pspl: &PeriodicBspline<P>, u: f64) -> Bspline<P> {
     let p = pspl.degree() as usize;
     if periodic_param(pspl.param_range(), u).eqparam(pspl.start_param()) {
-        let cbspl = pspl.to_spline().clone();
+        let cbspl = pspl.as_ref().clone();
         return clamp_ends(cbspl);
     }
 
@@ -59,7 +58,7 @@ pub fn split_periodic_curve<P: PointT>(pspl: &PeriodicBspline<P>, u: f64) -> Bsp
         return split_periodic_curve(&pspl.insert_knot(u), u);
     }
     let pc = rotate_base_knot(pspl, nu);
-    let cbspl = pc.into_spline();
+    let cbspl = pc.into();
     return clamp_ends(cbspl);
 }
 

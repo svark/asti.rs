@@ -1,4 +1,4 @@
-use curve::{Curve, FiniteCurve};
+use curve::{Curve, Domain};
 use vectorspace::PointT;
 
 #[derive(Debug)]
@@ -62,7 +62,7 @@ impl<P: PointT> Curve for MonomialForm<P> {
     }
 }
 
-impl<P: PointT> FiniteCurve for MonomialForm<P> {
+impl<P: PointT> Domain for MonomialForm<P> {
     fn param_range(&self) -> (f64, f64) {
         (self.s, self.e)
     }

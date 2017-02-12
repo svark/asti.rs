@@ -7,7 +7,6 @@ use either::*;
 use errcodes::GeomErrorCode;
 use bspline::Bspline;
 use periodic_spline::PeriodicBspline;
-use bspline::SplineWrapper;
 use std::iter::once;
 
 #[derive(PartialEq)]
@@ -422,7 +421,7 @@ fn pchip_closed<P:PointT>(pts :&[P],
 
     assert!((pts[n - 1] - pts[0]).norm().small());
    
-    PeriodicBspline::from_spline(Bspline::new(cpts, knots))
+    PeriodicBspline::from(Bspline::new(cpts, knots))
 }
 
 pub fn pchip<P:PointT>(pts :&[P],

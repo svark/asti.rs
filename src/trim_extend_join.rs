@@ -8,10 +8,10 @@ use vectorspace::PointT;
 use std::mem::swap;
 use std::iter::once;
 use rev::reverse_curve;
-use curve::Curve;
+use curve::{Curve, Domain};
 use reparametrize::{reparametrize_start, reparametrize};
 use split_curve::{split_open_curve, split_periodic_curve};
-
+use periodic_spline::{periodic_param, PeriodicBspline};
 pub fn join_starts<T: PointT>(spl1: &Bspline<T>,
                               spl2: &Bspline<T>,
                               join_cont: usize)
@@ -127,8 +127,6 @@ pub fn extend_curve_end_to_pt<T>(spl: &Bspline<T>, target: &T) -> Bspline<T>
 
     Bspline::new(newcpts, newks)
 }
-use curve::FiniteCurve;
-use periodic_spline::{periodic_param, PeriodicBspline};
 
 pub fn trim_open_curve<T: PointT>(spl: &Bspline<T>, a: f64, b: f64) -> Bspline<T> {
     assert!(b >= a);
@@ -147,7 +145,6 @@ pub fn trim_periodic_curve<T: PointT>(spl: &PeriodicBspline<T>, a: f64, b: f64) 
     let (sb, _) = split_open_curve(&sa, bbar);
     return sb;
 }
-
 
 #[test]
 fn it_works() {

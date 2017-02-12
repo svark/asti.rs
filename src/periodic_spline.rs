@@ -1,7 +1,7 @@
 use splinedata::{SplineData, KnotManip};
-use bspline::{Bspline, SplineWrapper, SplineMut};
-use curve::{Curve, FiniteCurve};
-use vectorspace::PointT;
+use bspline::{Bspline, SplineWrapper};
+use curve::{Curve, Domain};
+use vectorspace::{PointT, AssocPoint};
 use tol::Tol;
 use class_invariant::ClassInvariant;
 use nalgebra::Norm;
@@ -28,15 +28,11 @@ impl<P: PointT> From<Bspline<P>> for PeriodicBspline<P> {
     }
 }
 
-impl<Point: PointT> SplineWrapper for PeriodicBspline<Point> {
-    type TW = Point;
-    fn to_spline(&self) -> &Bspline<Self::TW> {
-        &self.spl
-    }
-    fn from_spline(spl: Bspline<Self::TW>) -> Self {
-        PeriodicBspline { spl: spl }
-    }
+impl<P: PointT> AssocPoint for PeriodicBspline<P> {
+    type TW = P;
 }
+
+impl<P: PointT> SplineWrapper for PeriodicBspline<P> {}
 
 impl<Point: PointT> PeriodicBspline<Point> {
     pub fn new_from_unwrapped(pts: Vec<Point>, ks: Vec<f64>, degree: usize) -> Self {
@@ -73,7 +69,7 @@ impl<Point: PointT> PeriodicBspline<Point> {
         }
         t.extend(ks.iter());
         t.extend(bp.iter());
-        PeriodicBspline::from_spline(Bspline::new(cpts, t))
+        PeriodicBspline::from(Bspline::new(cpts, t))
     }
 }
 
@@ -104,12 +100,6 @@ impl<Point: PointT> Curve for PeriodicBspline<Point> {
     }
 }
 
-impl<P: PointT> FiniteCurve for PeriodicBspline<P> {
-    fn param_range(&self) -> (f64, f64) {
-        return self.spl.param_range();
-    }
-}
-
 impl<Point: PointT> ClassInvariant for PeriodicBspline<Point> {
     fn is_valid(&self) -> Result<bool, &str> {
         try!(self.spl.is_valid());
@@ -134,8 +124,8 @@ impl<Point: PointT> ClassInvariant for PeriodicBspline<Point> {
     }
 }
 
-impl<P: PointT> SplineMut for PeriodicBspline<P> {
-    fn into_spline(self) -> Bspline<Self::T> {
+impl<P: PointT> Into<Bspline<P>> for PeriodicBspline<P> {
+    fn into(self) -> Bspline<P> {
         self.spl
     }
 }

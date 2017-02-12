@@ -1,9 +1,9 @@
 use vectorspace::PointT;
-use bspline::{Bspline, SplineWrapper, SplineMut};
+use bspline::{Bspline, SplineWrapper};
 use periodic_spline::PeriodicBspline;
-use curve::{Curve, FiniteCurve};
+use curve::Curve;
 use class_invariant::ClassInvariant;
-use vectorspace::Ops;
+use vectorspace::{Ops, AssocPoint};
 
 pub struct RationalBspline<Point>
     where Point: PointT
@@ -16,7 +16,6 @@ pub struct PeriodicRationalBspline<Point>
 {
     spl: PeriodicBspline<Point::H>,
 }
-
 
 // inputs are of form v,v',v"..v^(n) (ie all derivatives upto n-th)
 // returns w^(n)
@@ -55,34 +54,22 @@ impl<P: PointT> From<Bspline<P::H>> for RationalBspline<P> {
     }
 }
 
-impl<Point> SplineWrapper for RationalBspline<Point>
-    where Point: PointT
-{
+impl<Point: PointT> AssocPoint for RationalBspline<Point> {
     type TW = Point::H;
-    fn to_spline(&self) -> &Bspline<Self::TW> {
-        &self.spl
-    }
-    fn from_spline(spl: Bspline<Self::TW>) -> Self {
-        RationalBspline { spl: spl }
-    }
 }
 
-impl<Point> SplineWrapper for PeriodicRationalBspline<Point>
-    where Point: PointT
-{
+impl<Point: PointT> AssocPoint for PeriodicRationalBspline<Point> {
     type TW = Point::H;
-    fn to_spline(&self) -> &Bspline<Self::TW> {
-        self.spl.to_spline()
-    }
-    fn from_spline(spl: Bspline<Self::TW>) -> Self {
-        PeriodicRationalBspline { spl: PeriodicBspline::from_spline(spl) }
-    }
 }
+
+
+impl<Point> SplineWrapper for RationalBspline<Point> where Point: PointT {}
+
+impl<Point> SplineWrapper for PeriodicRationalBspline<Point> where Point: PointT {}
 
 impl<Point: PointT> RationalTrait for RationalBspline<Point> {}
 
 impl<Point: PointT> RationalTrait for PeriodicRationalBspline<Point> {}
-
 
 impl<P> ClassInvariant for RationalBspline<P>
     where P: PointT
@@ -96,23 +83,17 @@ impl<SplineType: RationalTrait> Curve for SplineType {
     type T = TWL!();
 
     fn eval(&self, v: f64) -> Self::T {
-        let pw = self.to_spline().eval(v);
+        let pw = self.as_ref().eval(v);
         pw.ldim() * (1.0 / pw[Self::T::dim()])
     }
 
     fn eval_derivative(&self, v: f64, order: u32) -> Self::T {
         let vecs: Vec<_> = (0..order + 1)
                                .into_iter()
-                               .map(|i| self.to_spline().eval_derivative(v, i))
+                               .map(|i| self.as_ref().eval_derivative(v, i))
                                .collect();
 
         *rational_derivatives_from_derivatives(&vecs).last().unwrap()
-    }
-}
-
-impl<SplineType: RationalTrait> FiniteCurve for SplineType {
-    fn param_range(&self) -> (f64, f64) {
-        self.to_spline().param_range()
     }
 }
 
@@ -127,7 +108,6 @@ impl<P: PointT> AsMut<Bspline<P::H>> for RationalBspline<P> {
         &mut self.spl
     }
 }
-
 
 impl<P: PointT> AsRef<PeriodicBspline<P::H>> for PeriodicRationalBspline<P> {
     fn as_ref(&self) -> &PeriodicBspline<P::H> {
@@ -165,15 +145,15 @@ impl<P: PointT> From<Bspline<P::H>> for PeriodicRationalBspline<P> {
     }
 }
 
-impl<P: PointT> SplineMut for RationalBspline<P> {
-    fn into_spline(self) -> Bspline<Self::T> {
-        self.spl
+impl<P: PointT> Into<Bspline<P::H>> for PeriodicRationalBspline<P> {
+    fn into(self) -> Bspline<P::H> {
+        self.spl.into()
     }
 }
 
-impl<P: PointT> SplineMut for PeriodicRationalBspline<P> {
-    fn into_spline(self) -> Bspline<Self::T> {
-        self.spl.into_spline()
+impl<P: PointT> Into<Bspline<P::H>> for RationalBspline<P> {
+    fn into(self) -> Bspline<P::H> {
+        self.spl
     }
 }
 
@@ -181,7 +161,7 @@ impl<P: PointT> SplineMut for PeriodicRationalBspline<P> {
 fn it_works() {
     use point::{Pt2, Pt1};
     let v: Vec<Pt2> = vec![Pt2::new(1.0, 1.0), Pt2::new(2.0, 1.0), Pt2::new(1.0, 1.0)];
-    let rs = RationalBspline::<Pt1>::from_spline(Bspline::new(v, vec![0., 0., 0., 1., 1., 1.]));
+    let rs = RationalBspline::<Pt1>::from(Bspline::new(v, vec![0., 0., 0., 1., 1., 1.]));
 
     let bs = Bspline::new(vec![Pt1::new(1.0), Pt1::new(2.0), Pt1::new(1.0)],
                           vec![0., 0.0, 0.0, 1., 1., 1.]);

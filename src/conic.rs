@@ -2,14 +2,14 @@ use tol::Tol;
 use tol::RESABS;
 use rational_bspline::{RationalBspline, rational_derivatives_from_derivatives};
 use vectorspace::{PointT, Ops, to_pt};
-use curve::{Curve, FiniteCurve};
+use curve::{Curve, Domain};
 use std::f64::consts::PI;
 use errcodes::GeomErrorCode;
 use errcodes::GeomErrorCode::*;
 use line::Line;
 use point::{is_collinear, is_coplanar, Pt2, Pt3, Vec3, Vec2};
 use angle::{Angle, perp_in_plane};
-use bspline::{Bspline, SplineWrapper};
+use bspline::{Bspline};
 use nalgebra::{Norm, Dot};
 
 pub struct ConicArc<P: PointT> {
@@ -161,7 +161,7 @@ impl<P: PointT> Curve for ConicArc<P> {
     }
 }
 
-impl<P: PointT> FiniteCurve for ConicArc<P> {
+impl<P: PointT> Domain for ConicArc<P> {
     fn param_range(&self) -> (f64, f64) {
         (0.0, 1.0)
     }
@@ -223,7 +223,7 @@ pub fn make_rbspline_from_conic(arc: &ConicArc<Pt3>) -> Result<RationalBspline<P
             let ks = vec![0., 0., 0., 1., 1., 1.];
             let cpts = vec![arc.p[0].clone(), arc.p[1].clone(), arc.p[2].clone()];
             let spl = Bspline::new(cpts, ks);
-            Ok(RationalBspline3::from_spline(spl))
+            Ok(RationalBspline3::from(spl))
         } else if w < 0.0 && alpha > PI / 2.0 {
             let ks = vec![0., 0., 0., 0.25, 0.25, 0.5, 0.5, 0.75, 0.75, 1., 1., 1.];
 
@@ -235,13 +235,13 @@ pub fn make_rbspline_from_conic(arc: &ConicArc<Pt3>) -> Result<RationalBspline<P
             let (q2, s2, r2) = c2arc.split_conic_at_shoulder();
             let cpts = vec![arc.p[0], q1, s1, r1, s0, q2, s2, r2, arc.p[2]];
             let spl = Bspline::new(cpts, ks);
-            Ok(RationalBspline::from_spline(spl))
+            Ok(RationalBspline::from(spl))
         } else {
             let (q, s, r) = arc.split_conic_at_shoulder();
             let ks = vec![0., 0., 0., 0.5, 0.5, 1., 1., 1.];
             let cpts = vec![arc.p[0], q, s, r, arc.p[2]];
             let spl = Bspline::new(cpts, ks);
-            Ok(RationalBspline::from_spline(spl))
+            Ok(RationalBspline::from(spl))
         }
     } else {
         Err(DegenerateOrSmallConic)

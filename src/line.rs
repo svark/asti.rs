@@ -1,6 +1,6 @@
 use tol::{Tol, RESABS};
 use vectorspace::{PointT, to_pt, PV};
-use curve::{Curve, FiniteCurve};
+use curve::{Curve, Domain};
 use std::f64::INFINITY;
 use std::f64;
 use nalgebra::{Cross, Norm, Dot};
@@ -45,7 +45,7 @@ impl<P: PointT> Curve for LineSeg<P> {
     }
 }
 
-impl<P: PointT> FiniteCurve for LineSeg<P> {
+impl<P: PointT> Domain for LineSeg<P> {
     fn param_range(&self) -> (f64, f64) {
         (self.a, self.b)
     }

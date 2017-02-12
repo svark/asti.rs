@@ -87,3 +87,15 @@ pub fn to_pt<P: PointT>(v: <P as PV>::V) -> P
     P::zero_pt() + v
 }
 
+pub trait AssocPoint
+{
+   type TW : PointT;
+}
+
+macro_rules! TW {
+    () =>  {<Self as AssocPoint>::TW}
+}
+
+macro_rules! TWL {
+    () =>  {<< Self as AssocPoint>::TW as PointT>::L}
+}
