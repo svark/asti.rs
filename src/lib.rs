@@ -41,6 +41,7 @@ pub mod reparametrize;
 pub mod trim_extend_join;
 pub mod split_curve;
 pub mod spline_interp;
+pub mod fair_curve;
 #[test]
 fn it_works() {
 

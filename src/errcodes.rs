@@ -11,4 +11,5 @@ pub enum GeomErrorCode {
     DuplicatePointData,
     InvalidPeriodicData,
     NotEnoughPointsForPeriodicInterp,
+    GeomDegreeLow,
 }
