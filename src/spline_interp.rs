@@ -1,4 +1,3 @@
-pub use nalgebra::{Norm, Dot, Dimension, Absolute, Indexable};
 use vectorspace::{PointT, to_pt, PV};
 use la::Matrix;
 use std::ops::Mul;
@@ -8,6 +7,7 @@ use errcodes::GeomErrorCode;
 use bspline::Bspline;
 use periodic_spline::PeriodicBspline;
 use std::iter::once;
+use vectorspace::NVS;
 
 #[derive(PartialEq)]
 pub enum ParametrizationOption {
@@ -35,7 +35,7 @@ fn qmat<P>(pts: &[P]) -> Vec<f64>
         n = n + 1;
     }
     let cg = cpts * (1.0 / (n as f64));
-    let dim = P::dimension(None);
+    let dim = P::dim();
     let mut sigmaxy = vec![0.0;dim*dim];
 
     for &q in pts.into_iter() {
@@ -88,7 +88,7 @@ pub fn find_parameters<P:PointT>(pts: &[P], opt: ParametrizationOption) -> Vec<f
         }
         
         ParametrizationOption::AffinelyInvariant => {
-            let n = P::dimension(None);
+            let n = P::dim();
             let ref m = Matrix::new(n, n, qmat(pts));
             psums![ pts.windows(2)
               .map(|p| to_pt::<P>(p[1] - p[0]))
@@ -100,7 +100,7 @@ pub fn find_parameters<P:PointT>(pts: &[P], opt: ParametrizationOption) -> Vec<f
         }
 
         ParametrizationOption::NeilsonFoley => {
-            let n = P::dimension(None);
+            let n = P::dim();
             let ref m = Matrix::new(n, n, qmat(pts));
             let widths = pts.windows(2)
                            .map(|p| to_pt::<P>(p[1] - p[0]))
@@ -136,7 +136,7 @@ macro_rules! e{
 }
 
 fn setrow<P: PointT>(lhs: &mut Matrix<f64>, i: usize, pv: P) {
-    let dim = P::dimension(None);
+    let dim = P::dim();
     for j in 0..dim {
         let c: f64 = pv[j];
         lhs.get_mut_data()[(i * dim + j)] = c;
@@ -154,7 +154,6 @@ pub fn setup_mat<P:PointT>(m: &mut Matrix<f64>,
     // as in hoschek  pg 88
     // eqn 3.18. contd.
     let n = t.len();
-    // let dim = P::dimension(None);
     for j in 1..(n - 1) {
         let aj = e!(t, j);
         let aj1 = e!(t, j - 1);
@@ -192,7 +191,7 @@ fn eval_tangents<P>(
 ) -> Option< Vec<<P as PV>::V> >
 where P:PointT
 {
-    let dim = P::dimension(None);
+    let dim = P::dim();
     let o = P::zero_pt();
     let n = pts.len();
     let ref mut m = Matrix::zero(n, n);

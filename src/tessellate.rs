@@ -3,7 +3,7 @@ use bspline::Bspline;
 use splinedata::SplineData;
 use bezier::split_into_bezier_patches;
 use curve::{Curve, CurvePoint, Domain};
-use nalgebra::Norm;
+use vectorspace::NVS;
 
 pub fn tessellate<P: PointT>(eps: f64, spl: &Bspline<P>) -> Vec<CurvePoint<P>> {
     let d = spl.degree();

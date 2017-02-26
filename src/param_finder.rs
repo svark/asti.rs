@@ -78,7 +78,7 @@ pub fn it_works() {
     use bspline::Bspline;
     use bezier::split_into_bezier_patches;
     use curve::Curve;
-    use nalgebra::Norm;
+    use vectorspace::NVS;
     let spl = Bspline::new(vec![Pt3::new(0., 0., 1.0),
                                 Pt3::new(0.0, 0.5, 1.0),
                                 Pt3::new(0.5, 0.5, 1.0),

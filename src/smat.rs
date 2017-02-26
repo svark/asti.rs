@@ -220,7 +220,7 @@ pub fn clamp_unclamped_ends<T>(spl: &T) -> Option<T>
 fn it_works() {
     use bspline::Bspline;
     use splinedata::SplineData;
-    use nalgebra::Norm;
+    use vectorspace::NVS;
     use curve::Curve;
     use point::Pt1;
     use tol::RESABS;

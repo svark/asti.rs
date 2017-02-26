@@ -23,7 +23,7 @@ pub fn reparametrize<T: PointT>(spl: Bspline<T>, a: f64, b: f64) -> Bspline<T> {
 fn it_works() {
     use point::Pt2;
     use tol::Tol;
-    use nalgebra::Norm;
+    use vectorspace::NVS;
     use curve::Curve;
 
     let pts = vec![Pt2::new(0.0, 0.0),

@@ -1,5 +1,5 @@
 pub use nalgebra::{Vector1, Vector2, Vector3, Vector4};
-pub use nalgebra::{Point1, Point2, Point3, Point4, center, Norm, Dot, Absolute, zero};
+pub use nalgebra::{Point1, Point2, Point3, Point4, center, Absolute, zero};
 pub type Pt1 = Point1<f64>;
 pub type Pt2 = Point2<f64>;
 pub type Pt3 = Point3<f64>;
@@ -10,7 +10,7 @@ pub type Vec3 = Vector3<f64>;
 pub type Vec4 = Vector4<f64>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-use vectorspace::{PointT, Ops, PV};
+use vectorspace::{PointT, Ops, PV, NVS};
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -19,6 +19,10 @@ impl Ops for Vec2 {}
 impl Ops for Vec3 {}
 impl Ops for Vec4 {}
 
+impl NVS for Vec1 {}
+impl NVS for Vec2 {}
+impl NVS for Vec3 {}
+impl NVS for Vec4 {}
 
 impl Ops for Pt1 {}
 impl Ops for Pt2 {}

@@ -1,9 +1,8 @@
-use tol::{Tol, RESABS};
-use vectorspace::{PointT, to_pt, PV};
+use tol::Tol;
+use vectorspace::{PointT, to_pt, PV, NVS, Cross};
 use curve::{Curve, Domain};
 use std::f64::INFINITY;
 use std::f64;
-use nalgebra::{Cross, Norm, Dot};
 use point::Pt3;
 pub struct Line<P: PointT> {
     start: P,
@@ -55,7 +54,7 @@ impl<Point: PointT> Line<Point> {
     pub fn new(p1: &Point, dir_as_pt: &Point) -> Option<Line<Point>> {
         let dir = (*dir_as_pt).as_vector();
         debug_assert!(!dir.norm().small());
-        if let Some(nrml) = dir.try_normalize(RESABS) {
+        if let Some(nrml) = dir.try_normalize() {
             Some(Line {
                 start: *p1,
                 dir: Point::from_vec(&nrml),

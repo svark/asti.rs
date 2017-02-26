@@ -66,7 +66,7 @@ pub fn split_periodic_curve<P: PointT>(pspl: &PeriodicBspline<P>, u: f64) -> Bsp
 fn it_works() {
     use point::Pt2;
     use curve::Curve;
-    use nalgebra::Norm;
+    use vectorspace::NVS;
     let pts = vec![Pt2::new(0.0, 0.0), Pt2::new(0.4, 0.3), Pt2::new(0.2, 0.8), Pt2::new(-0.2, 0.4)];
     let ks = vec![0.0, 0.3, 0.6, 0.8, 1.0];
 

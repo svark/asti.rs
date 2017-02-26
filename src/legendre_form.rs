@@ -88,7 +88,7 @@ impl<P: PointT> Domain for LegendreForm<P> {
 fn it_works() {
     use tol::Tol;
     use point::Pt1;
-    use nalgebra::Norm;
+    use vectorspace::NVS;
     let lf = LegendreForm::new(vec![Pt1::new(1.0), Pt1::new(0.0), Pt1::new(0.0)], 0., 1.);
     println!("{:?}", lf.eval(0.0));
     assert!((lf.eval(0.0) - Pt1::new(1.0)).norm().small());

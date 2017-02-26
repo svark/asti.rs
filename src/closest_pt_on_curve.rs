@@ -1,6 +1,5 @@
 // approximate distance function as a bspline and find its minima
-use vectorspace::PointT;
-use nalgebra::Dot;
+use vectorspace::{PointT, NVS};
 use spline_approx::cubic_approx1d;
 use curve::{CurvePoint, Domain};
 use bspline::Bspline;

@@ -1,10 +1,13 @@
 use std::marker::Copy;
 use std::clone::Clone;
-use tol::Tol;
+use tol::{Tol, RESABS};
 use std::fmt::Debug;
 use std::ops::{Add, Sub, Mul, Div,  AddAssign, MulAssign, DivAssign, Index};
-use nalgebra::{Repeat, NumVector, Indexable, Dimension, Norm, Origin, Axpy};
+use nalgebra::{Repeat, NumVector, Indexable, Dimension, Dot, Norm, Origin};
 use std::mem;
+
+pub use nalgebra::Cross;
+pub use nalgebra::Axpy;
 
 pub trait Ops : Repeat<f64> + Indexable<usize,f64> + Dimension {
     fn splat(x: f64) -> Self {
@@ -22,11 +25,28 @@ pub trait Ops : Repeat<f64> + Indexable<usize,f64> + Dimension {
         debug_assert!(i < Self::dim());
         unsafe { self.unsafe_set(i, x) }
     }
+}
 
+pub trait NVS : Norm<NormType=f64> + Dot<f64> + Mul<f64,Output=Self>  {
+    fn norm(&self) -> f64 {
+        Norm::norm(self)
+    }
+    
+    fn dot(&self, other: &Self) -> f64 {
+        Dot::dot(self,other)
+    }
+
+    fn norm_squared(&self) -> f64 {
+        Norm::norm_squared(self)
+    }
+    
+    fn try_normalize(&self) -> Option<Self> {
+        Norm::try_normalize(self, RESABS)        
+    }
 }
 
 pub trait PV : Indexable<usize,f64> + Sized + Clone {
-   type V: NumVector<f64> + Norm<NormType=f64> + Indexable<usize,f64> + Clone + Copy;
+   type V: NumVector<f64> + NVS + Indexable<usize,f64> + Clone + Copy;
 
    fn to_vector(&self) -> Self::V {
         let v: &Self::V = unsafe {

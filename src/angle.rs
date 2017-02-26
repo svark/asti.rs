@@ -1,7 +1,7 @@
 use point::{Pt3, Vec2, Vec3};
-use nalgebra::{RotationTo, Cross, Norm, FloatVector};
-use tol::{Tol, RESABS};
-use vectorspace::Ops;
+use nalgebra::{RotationTo, Cross, FloatVector};
+use tol::Tol;
+use vectorspace::{Ops, NVS};
 
 pub trait Angle : FloatVector<f64> + RotationTo
 {
@@ -25,10 +25,11 @@ pub trait Angle : FloatVector<f64> + RotationTo
 impl Angle for Vec3 {}
 impl Angle for Vec2 {}
 
+
 pub fn plane_normal(p: [Pt3; 3]) -> Option<Vec3> {
     let ref v10 = p[1] - p[0];
     let ref v20 = p[2] - p[0];
-    v10.cross(&v20).try_normalize(RESABS)
+    v10.cross(&v20).try_normalize()
 }
 
 pub fn perp_in_plane(v1: Vec3, p: [Pt3; 3]) -> Option<Vec3> {

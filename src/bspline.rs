@@ -1,10 +1,9 @@
 use tol::{Tol, PARAMRES};
-use vectorspace::{PointT, AssocPoint};
+use vectorspace::{PointT, AssocPoint, Axpy};
 use util::merge;
 use splinedata::{SplineData, KnotManip};
 use curve::{Curve, Domain, BlossomCurve};
 use rmat::{eval, locate_nu};
-use nalgebra::Axpy;
 use class_invariant::ClassInvariant;
 use std::fmt;
 // use curve::Domain;

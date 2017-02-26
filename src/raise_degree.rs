@@ -66,7 +66,7 @@ pub fn match_degrees<T: PointT>(spl1: &mut Bspline<T>, spl2: &mut Bspline<T>) {
 #[test]
 fn it_works() {
     use point::Pt1;
-    use nalgebra::Norm;
+    use vectorspace::NVS;
     use tol::Tol;
     use curve::Curve;
     let spl = Bspline::new(vec![Pt1::new(0.0), Pt1::new(1.0), Pt1::new(0.0)],

@@ -115,7 +115,7 @@ pub fn split_into_bezier_patches<P>(spl: &Bspline<P>) -> Vec<Bezier<P>>
 fn it_works() {
     use point::Pt2;
     use tol::Tol;
-    use nalgebra::Norm;
+    use vectorspace::NVS;
     let pts = vec![Pt2::new(0.0, 0.0),
                    Pt2::new(1.0, 1.0),
                    Pt2::new(1.5, 0.3),

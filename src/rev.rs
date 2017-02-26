@@ -12,7 +12,7 @@ fn it_works() {
     use point::Pt1;
     use tol::Tol;
     use curve::{Curve, Domain};
-    use nalgebra::Norm;
+    use vectorspace::NVS;
     let spl = Bspline::new(vec![Pt1::new(0.0), Pt1::new(1.0), Pt1::new(2.1)],
                            vec![0.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
     let s = reverse_curve(&spl);

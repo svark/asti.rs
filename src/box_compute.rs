@@ -1,18 +1,17 @@
-use curve::FiniteCurve;
 use splinedata::{KnotManip, SplineData, greville};
 use smat::clamp_unclamped_ends;
-use bspline::SplineWrapper;
-use vectorspace::Ops;
 use tol::Tol;
-
+use bspline::Bspline;
+use vectorspace::PointT;
+use std::f64;
+use curve::Curve;
 enum MinMaxBound {
     MinBound,
     MaxBound,
 }
 
-fn find_knot_at_bound<SplineT>(bs: &SplineT, ci: i32, mm: &MinMaxBound) -> (f64, bool)
-    where SplineT: SplineData + KnotManip,
-          <SplineT as SplineData>::T: Ops
+fn find_knot_at_bound<P>(bs: &Bspline<P>, ci: i32, mm: &MinMaxBound) -> (f64, bool)
+    where P: PointT
 {
     let pts = bs.control_points();
     let t = bs.knots();
@@ -84,10 +83,7 @@ fn find_knot_at_bound<SplineT>(bs: &SplineT, ci: i32, mm: &MinMaxBound) -> (f64,
     (u, false)
 }
 
-fn find_bound_by_insertion<T>(bs: &T, i: i32, mm: MinMaxBound) -> (f64, f64)
-    where T: SplineData + SplineWrapper + FiniteCurve + KnotManip + Clone,
-          <T as SplineData>::T: Ops
-{
+fn find_bound_by_insertion<P: PointT>(bs: &Bspline<P>, i: i32, mm: MinMaxBound) -> (f64, f64) {
     let cbs = clamp_unclamped_ends(bs);
     let spl = cbs.as_ref().unwrap_or(bs);
 
@@ -106,21 +102,49 @@ fn find_bound_by_insertion<T>(bs: &T, i: i32, mm: MinMaxBound) -> (f64, f64)
 }
 
 // find param at minima of the given spline projected at coord index `i'
-pub fn find_min_bound_by_insertion<T>(bs: &T, i: i32) -> (f64, f64)
-    where T: SplineData + SplineWrapper + FiniteCurve + KnotManip + Clone,
-          <T as SplineData>::T: Ops
-{
+pub fn find_min_bound_by_insertion<P: PointT>(bs: &Bspline<P>, i: i32) -> (f64, f64) {
     find_bound_by_insertion(bs, i, MinMaxBound::MinBound)
 }
 
 // find param at maxima of the given spline projected at coord index `i'
-pub fn find_max_bound_by_insertion<T>(bs: &T, i: i32) -> (f64, f64)
-    where T: SplineData + SplineWrapper + FiniteCurve + KnotManip + Clone,
-          <T as SplineData>::T: Ops
-{
+pub fn find_max_bound_by_insertion<P: PointT>(bs: &Bspline<P>, i: i32) -> (f64, f64) {
     find_bound_by_insertion(bs, i, MinMaxBound::MaxBound)
 }
 
+pub fn tight_box<P: PointT>(bs: &Bspline<P>) -> (P, P) {
+    let dim = P::dim();
+    let mut min = P::zero_pt();
+    let mut max = P::zero_pt();
+    for i in 0..dim {
+        min[i] = find_bound_by_insertion(bs, i as i32, MinMaxBound::MinBound).1;
+        max[i] = find_bound_by_insertion(bs, i as i32, MinMaxBound::MaxBound).1;
+    }
+    (min, max)
+}
+
+pub fn compute_box<P>(bs: &Bspline<P>) -> (P, P)
+    where P: PointT
+{
+    let num_cpts = bs.control_points().len();
+
+    let dim = P::dim();
+    let mut minp: P = P::splat(f64::MAX);
+    let mut maxp: P = P::splat(f64::MIN);
+
+    for i in 0..num_cpts {
+        let lp = bs.control_points()[i];
+        for j in 0..dim {
+            let lpj = lp[j];
+            if minp[j] > lpj {
+                minp[j] = lpj;
+            }
+            if maxp[j] < lpj {
+                maxp[j] = lpj;
+            }
+        }
+    }
+    (minp, maxp)
+}
 
 #[test]
 fn it_works() {
@@ -140,6 +164,10 @@ fn it_works() {
     let minb = find_min_bound_by_insertion(&bs, 0);
     println!("param at maxima{:?}", maxb.0);
     println!("param at minima{:?}", minb.0);
-    assert!((maxb.1 - 0.6515263864065358).abs().small());
-    assert!((minb.1 - 0.0).abs().small());
+    assert!((maxb.0 - 0.5786249416066778).abs().small());
+    assert!((minb.0 - 0.0).abs().small());
+    let (minb, maxb) = tight_box(&bs);
+
+    assert_eq!(minb[0], 0.);
+    assert_eq!(maxb[0], 0.6515263869973378);
 }

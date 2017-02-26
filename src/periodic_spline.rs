@@ -1,10 +1,9 @@
 use splinedata::{SplineData, KnotManip};
 use bspline::{Bspline, SplineWrapper};
 use curve::{Curve, Domain};
-use vectorspace::{PointT, AssocPoint};
+use vectorspace::{PointT, AssocPoint, NVS};
 use tol::Tol;
 use class_invariant::ClassInvariant;
-use nalgebra::Norm;
 pub struct PeriodicBspline<Point: PointT> {
     spl: Bspline<Point>,
 }

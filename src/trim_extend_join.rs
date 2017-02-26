@@ -1,7 +1,7 @@
 use errcodes::GeomErrorCode;
 use bspline::Bspline;
 use splinedata::{SplineData, KnotManip};
-use nalgebra::Norm;
+use vectorspace::NVS;
 use smat::{clamp_at_left, rebase_at_left, rebase_at_right};
 use raise_degree::match_degrees;
 use vectorspace::PointT;

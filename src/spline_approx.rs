@@ -59,7 +59,7 @@ fn it_works() {
        assert!((root + 1.32471795724475).abs() < 1e-8);
 
     {
-        use nalgebra::Norm;
+        use vectorspace::NVS;
         use tol::Tol;
         let f = |x| { x*x + x + 1.0}; 
        let ref mut spl = cubic_approx1d(&f,vec![-1.0,-1.0,-1.0,-1.0,0.,1.,1.,1.,1.]);

@@ -5,7 +5,7 @@ use vectorspace::{PointT, to_pt};
 use curve::Curve;
 use splinedata::{KnotManip, SplineData};
 use itertools::Itertools;
-use nalgebra::Norm;
+use vectorspace::NVS;
 
 // Farin, Curves and Surfaces pg 422, Shape
 // Idea is to move a control point where the largest jump is noticed in third derivatives.

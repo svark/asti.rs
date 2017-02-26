@@ -10,7 +10,7 @@ use line::Line;
 use point::{is_collinear, is_coplanar, Pt2, Pt3, Vec3, Vec2};
 use angle::{Angle, perp_in_plane};
 use bspline::{Bspline};
-use nalgebra::{Norm, Dot};
+use vectorspace::NVS;
 
 pub struct ConicArc<P: PointT> {
     p: [P::H; 3],
@@ -191,7 +191,7 @@ pub fn make_circular_arc(p: [Pt3; 3]) -> Result<ConicArc<Pt3>, GeomErrorCode> {
     let p02 = p[2] - p[0];
 
     let angle = try!(p10.try_angle(&p12).ok_or(DegenerateCircle));
-    let w = try!(p02.try_normalize(RESABS).ok_or(DegenerateCircle));
+    let w = try!(p02.try_normalize().ok_or(DegenerateCircle));
     let mut v = try!(perp_in_plane(w, p).ok_or(DegenerateCircle));
     let theta = PI - angle;
     if (p[1] - p[0]).dot(&v) < 0.0 {
